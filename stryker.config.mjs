@@ -8,8 +8,8 @@
  * so that is where mutants must die. Test scaffolding under `testing/` and the
  * committed goldens are excluded from mutation.
  *
- * Run with `npm run mutation`. Today the engine is near-empty (only the S0.2
- * `sample.ts` fixture), so this proves the toolchain reports; the score becomes
+ * Run with `npm run mutation`. Today the engine holds only the S0.3 domain model
+ * (value/order/fixture), so this proves the toolchain reports; the score becomes
  * load-bearing as real ops land (S1.1+).
  *
  * @type {import('@stryker-mutator/api/core').PartialStrykerOptions}
