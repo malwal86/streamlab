@@ -12,7 +12,11 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:prop": "vitest run property",
+    "test:golden": "vitest run golden",
+    "mutation": "stryker run"
   },
   "dependencies": {
     "@react-three/drei": "^9.114.0",
@@ -25,6 +29,8 @@
     "zustand": "^4.5.5"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.1",
     "@types/node": "^20.16.11",
@@ -32,9 +38,11 @@
     "@types/react-dom": "^18.3.0",
     "@types/three": "^0.169.0",
     "@vitejs/plugin-react": "^4.3.2",
+    "@vitest/coverage-v8": "^2.1.9",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.15",
     "eslint-config-prettier": "^9.1.0",
+    "fast-check": "^4.9.0",
     "jsdom": "^25.0.1",
     "prettier": "^3.3.3",
     "typescript": "^5.6.3",

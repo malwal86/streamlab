@@ -19,5 +19,18 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html", "lcov"],
+      include: ["src/**/*.{ts,tsx}"],
+      // Test scaffolding, snapshots, and the pure-viz shell carry no logic worth
+      // a coverage floor; the engine is where the number matters.
+      exclude: [
+        "src/**/*.{test,spec}.{ts,tsx}",
+        "src/**/*.d.ts",
+        "src/engine/testing/**",
+        "src/engine/__golden__/**",
+      ],
+    },
   },
 });
