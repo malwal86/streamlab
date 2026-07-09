@@ -1,0 +1,184 @@
+[
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 0
+  },
+  {
+    "elementId": 1,
+    "input": {
+      "region": "West",
+      "total": 80
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 1
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 2
+  },
+  {
+    "elementId": 2,
+    "input": {
+      "region": "West",
+      "total": 1200
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 3
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 4
+  },
+  {
+    "elementId": 3,
+    "input": {
+      "region": "East",
+      "total": 95
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 5
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 6
+  },
+  {
+    "elementId": 4,
+    "input": {
+      "region": "East",
+      "total": 450
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 7
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 8
+  },
+  {
+    "elementId": 5,
+    "input": {
+      "region": "North",
+      "total": 300
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 9
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 10
+  },
+  {
+    "elementId": 6,
+    "input": {
+      "region": "West",
+      "total": 150
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 11
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 12
+  },
+  {
+    "elementId": 7,
+    "input": {
+      "region": "East",
+      "total": 600
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 13
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 14
+  },
+  {
+    "elementId": 8,
+    "input": {
+      "region": "North",
+      "total": 99
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 15
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 16
+  },
+  {
+    "elementId": 9,
+    "input": {
+      "region": "North",
+      "total": 2000
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 17
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 18
+  },
+  {
+    "elementId": 10,
+    "input": {
+      "region": "West",
+      "total": 100
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 19
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 20
+  },
+  {
+    "elementId": 11,
+    "input": {
+      "region": "West",
+      "total": 250
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 21
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 22
+  }
+]
