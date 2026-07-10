@@ -18,7 +18,7 @@ export function PulseMesh({ pulse }: { pulse: Pulse }) {
   const emissiveIntensity = pulse.kind === "survive" ? 3.4 : 2.2;
 
   return (
-    <group position={[pulse.x, pulse.y, 0]}>
+    <group position={[pulse.x, pulse.y, pulse.z]}>
       <mesh>
         <sphereGeometry args={[radius, 24, 24]} />
         <meshStandardMaterial

@@ -13,6 +13,7 @@
  * unit-testable without a GL context (which jsdom lacks; the R3F components that
  * consume this are smoke-tested at the page level, per S0.1).
  */
+import { REGIONS, type Region } from "@/engine/domain/order";
 
 /** The four conduit stages, in pull order (source first, terminal last). */
 export type StageId = "source" | "filter" | "map" | "terminal";
@@ -93,4 +94,31 @@ export function axonSegments(): readonly Axon[] {
 /** Midpoint and length of an axon — what a cylinder mesh positions/scales from. */
 export function axonMidpointAndLength(axon: Axon): { midX: number; length: number } {
   return { midX: (axon.fromX + axon.toX) / 2, length: Math.abs(axon.toX - axon.fromX) };
+}
+
+// ── Region bins (S1.9) ──────────────────────────────────────────────────────
+//
+// The grouping bins sit just past the terminal, one per region, spread along z
+// (depth) so a pulse's flight into its bin reads as a turn off the main axis.
+// Positions are derived from the region's index in REGIONS, so adding a region
+// (up to the spec's 3–4) places a new bin automatically.
+
+/** x of every bin — a short hop past the terminal. */
+export const BIN_X = stageX("terminal") + 2.4;
+
+/** z-spacing between adjacent region bins. */
+export const BIN_Z_SPACING = 2.4;
+
+/** Height of one accumulated element in a bin — bin height = count × this. */
+export const BIN_UNIT_HEIGHT = 0.55;
+
+/**
+ * The base anchor `[x, 0, z]` of a region's bin, centered as a group on the z-axis
+ * so the bins fan out symmetrically behind the terminal. A pulse routes here on
+ * `route` and the tower grows upward from here on `accumulate` (S1.9).
+ */
+export function binPosition(region: Region): Vec3 {
+  const index = REGIONS.indexOf(region);
+  const centered = index - (REGIONS.length - 1) / 2;
+  return [BIN_X, 0, centered * BIN_Z_SPACING];
 }

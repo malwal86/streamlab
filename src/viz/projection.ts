@@ -12,8 +12,8 @@
  * pure function with its own property/projection test.
  */
 import { type EngineEvent, type EventKind } from "@/engine/domain/event";
-import { type Region } from "@/engine/domain/order";
-import { stageX, type StageId } from "./geometry";
+import { REGIONS, type Region } from "@/engine/domain/order";
+import { binPosition, stageX, type StageId } from "./geometry";
 
 /**
  * How many elements the source will release over the whole run — the count of
@@ -83,6 +83,8 @@ export interface Pulse {
   readonly elementId: number;
   readonly x: number;
   readonly y: number;
+  /** Depth — 0 on the main axis; swings toward the region bin as the pulse routes (S1.9). */
+  readonly z: number;
   /** The forward event the pulse currently embodies — what S1.6+ encode/animate off. */
   readonly kind: EventKind;
   /** The element's group region (from its `emit`) — drives hue + glyph (S1.6). */
@@ -157,19 +159,52 @@ function currentTotal(
  * non-null while a beat is in flight (or both null on a non-heartbeat event) — the
  * "never two spikes" guardrail, true by construction (S1.5 AC3).
  */
+/** A region bin's fill at the current playhead — its count so far (fractional while growing). */
+export interface BinFill {
+  readonly region: Region;
+  /** Elements accumulated so far — grows by a fraction across the active `accumulate` beat. */
+  readonly count: number;
+}
+
 export interface SceneState {
   readonly demandSpike: DemandSpike | null;
   readonly pulse: Pulse | null;
   /** The filter's threshold readout, non-null while a pulse is being decided at the filter (S1.7). */
   readonly filterReadout: FilterReadout | null;
+  /** Every region bin's fill up to the playhead — the growing 3D towers (S1.9). */
+  readonly bins: readonly BinFill[];
 }
+
+/** Zero-fill bins for every region — the empty-scene / pre-roll state. */
+const EMPTY_BINS: readonly BinFill[] = Object.freeze(
+  REGIONS.map((region) => Object.freeze({ region, count: 0 })),
+);
 
 /** The empty scene — nothing in flight (empty log, or a non-heartbeat event). */
 const EMPTY_SCENE: SceneState = Object.freeze({
   demandSpike: null,
   pulse: null,
   filterReadout: null,
+  bins: EMPTY_BINS,
 });
+
+/**
+ * Every region bin's fill at `(eventIndex, frac)`: one count per `accumulate` seen
+ * up to `eventIndex`, with the *current* accumulate contributing only `frac` so the
+ * tower grows smoothly across its beat (spec §3.2 step 5). A pure read of the log,
+ * so at the end of the run each bin equals the engine's grouping count — and thus
+ * the oracle (S1.9 AC2).
+ */
+function binsAt(log: readonly EngineEvent[], eventIndex: number, frac: number): readonly BinFill[] {
+  const counts = new Map<Region, number>();
+  for (let i = 0; i <= eventIndex; i += 1) {
+    const event = log[i]!;
+    if (event.kind !== "accumulate") continue;
+    const contribution = i === eventIndex ? frac : 1; // the active accumulate grows in
+    counts.set(event.key, (counts.get(event.key) ?? 0) + contribution);
+  }
+  return REGIONS.map((region) => ({ region, count: counts.get(region) ?? 0 }));
+}
 
 /** How far below the conduit a rejected pulse sinks as it dissipates (spec §3.6). */
 const DIE_DEPTH = 3.2;
@@ -221,6 +256,10 @@ export function projectScene(log: readonly EngineEvent[], playhead: number): Sce
   const current = log[index]!;
   const next = log[index + 1];
 
+  // The bins grow independently of what is in flight — they hold their fill during a
+  // demand, and the active region's tower grows across its `accumulate` beat (S1.9).
+  const bins = binsAt(log, index, frac);
+
   // Retrograde demand spike (terminal → source): the beat's opening pull.
   if (current.kind === "demand") {
     const fromX = stageX("terminal");
@@ -229,11 +268,11 @@ export function projectScene(log: readonly EngineEvent[], playhead: number): Sce
       demandSpike: { x: lerp(fromX, toX, frac), progress: frac },
       pulse: null,
       filterReadout: null,
+      bins,
     };
   }
 
-  // Forward element pulse: interpolate between this station and the next, but only
-  // while the next event continues *this* element's journey.
+  // Forward element pulse.
   const fromX = forwardStationX(current.kind);
   if (fromX !== null && current.elementId !== undefined) {
     const payload = emitPayloadOf(log, current.elementId);
@@ -246,27 +285,36 @@ export function projectScene(log: readonly EngineEvent[], playhead: number): Sce
         // discounted after (S1.8).
         total: currentTotal(log, current, current.elementId, payload.total, frac),
       };
+      const [binX, , binZ] = binPosition(payload.region);
 
-      // A rejected pulse dies *at the filter* (spec §3.6): it never advances in x —
-      // it sinks into the void below the conduit and fades. This is what guarantees
-      // no pulse is ever rendered past the filter after a `die` (AC2).
-      const pulse: Pulse =
-        current.kind === "die"
-          ? { ...base, x: fromX, y: lerp(0, -DIE_DEPTH, frac), opacity: 1 - frac }
-          : (() => {
-              const nextX =
-                next && next.elementId === current.elementId ? forwardStationX(next.kind) : null;
-              const toX = nextX ?? fromX; // no continuation ⇒ hold in place
-              return { ...base, x: lerp(fromX, toX, frac), y: 0, opacity: 1 };
-            })();
+      let pulse: Pulse;
+      if (current.kind === "die") {
+        // Rejected *at the filter* (spec §3.6): sinks into the void, never advancing
+        // in x — the guarantee no pulse renders past the filter after a `die` (AC2).
+        pulse = { ...base, x: fromX, y: lerp(0, -DIE_DEPTH, frac), z: 0, opacity: 1 - frac };
+      } else if (current.kind === "route") {
+        // On `route` the classifier picks the bin — the pulse flies off the main axis
+        // toward its region bin (S1.9): x terminal→bin, z 0→binZ.
+        pulse = { ...base, x: lerp(stageX("terminal"), binX, frac), y: 0, z: lerp(0, binZ, frac), opacity: 1 };
+      } else if (current.kind === "accumulate") {
+        // Landed at the bin, merging in as the tower grows over the beat.
+        pulse = { ...base, x: binX, y: 0, z: binZ, opacity: 1 - frac };
+      } else {
+        // emit/test/survive/transform: travel along the main axis toward the next
+        // station while the journey continues; otherwise hold in place.
+        const nextX =
+          next && next.elementId === current.elementId ? forwardStationX(next.kind) : null;
+        const toX = nextX ?? fromX;
+        pulse = { ...base, x: lerp(fromX, toX, frac), y: 0, z: 0, opacity: 1 };
+      }
 
-      return { demandSpike: null, pulse, filterReadout: filterReadoutFor(log, pulse) };
+      return { demandSpike: null, pulse, filterReadout: filterReadoutFor(log, pulse), bins };
     }
   }
 
-  // A non-heartbeat event (parallel `fork`/`lane-demand`/… — later epics). Nothing
-  // in flight in the sequential heartbeat.
-  return EMPTY_SCENE;
+  // A non-heartbeat event (parallel `fork`/`lane-demand`/… — later epics): nothing
+  // in flight, but the bins still show their fill so far.
+  return { demandSpike: null, pulse: null, filterReadout: null, bins };
 }
 
 /** The caption shown for each forward-pulse stage (the demand caption is fixed). */

@@ -9,6 +9,7 @@ import { Axon } from "./Axon";
 import { Heartbeat } from "./Heartbeat";
 import { AutoPlay } from "./AutoPlay";
 import { FilterReadout } from "./FilterReadout";
+import { RegionBins } from "./RegionBins";
 
 /**
  * The inert **source stack** (S1.4): one dim dot per element the source will
@@ -55,12 +56,13 @@ export function ConduitScene() {
         <Neuron key={node.id} id={node.id} />
       ))}
       <SourceStack count={stack} />
+      <RegionBins />
 
       <Heartbeat />
       <FilterReadout />
       <AutoPlay />
 
-      <OrbitControls enablePan={false} enableDamping dampingFactor={0.1} />
+      <OrbitControls enablePan={false} enableDamping dampingFactor={0.1} target={[1, 0.4, 0]} />
     </>
   );
 }
