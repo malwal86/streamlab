@@ -82,6 +82,45 @@ describe("S2.4 controls — slice & terminal toggles (AC1, AC2)", () => {
   });
 });
 
+describe("S3.6 multithread controls — mode / threads / seed (AC1–AC3)", () => {
+  it("multithread reveals the thread + seed controls and swaps a forked log", () => {
+    render(<Controls />);
+    // Sequential by default: no thread/seed controls yet.
+    expect(screen.queryByRole("group", { name: /threads/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /multithread/i }));
+
+    expect(useAppStore.getState().config.mode).toBe("parallel");
+    expect(useAppStore.getState().eventLog.some((e) => e.kind === "fork")).toBe(true);
+    // The thread selector appears, reflecting the current 2-lane default.
+    const threads = screen.getByRole("group", { name: /threads/i });
+    expect(within(threads).getByRole("button", { name: "2" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("group", { name: /seed/i })).toBeInTheDocument();
+  });
+
+  it("the 4-thread button rebuilds the log with four lanes", () => {
+    act(() => useAppStore.getState().setMode("parallel"));
+    render(<Controls />);
+
+    fireEvent.click(screen.getByRole("button", { name: "4" }));
+
+    expect(useAppStore.getState().config.threadCount).toBe(4);
+    const fork = useAppStore.getState().eventLog.find((e) => e.kind === "fork");
+    expect(fork?.kind === "fork" && fork.lanes).toBe(4);
+  });
+
+  it("reseed re-runs the engine and resets the playhead", () => {
+    act(() => useAppStore.getState().setMode("parallel"));
+    act(() => useAppStore.getState().setPlayhead(5));
+    render(<Controls />);
+
+    fireEvent.click(screen.getByRole("button", { name: /new seed/i }));
+
+    expect(useAppStore.getState().config.seed).toBe(DEFAULT_CONFIG.seed + 1);
+    expect(useAppStore.getState().playhead).toBe(PLAYHEAD_START);
+  });
+});
+
 describe("S2.4 code panel — tracks the selected slice/terminal", () => {
   it("shows the grouping collector for Slice A", () => {
     render(<CodePanel />);
