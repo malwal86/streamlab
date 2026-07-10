@@ -12,6 +12,7 @@
  * pure function with its own property/projection test.
  */
 import { type EngineEvent, type EventKind } from "@/engine/domain/event";
+import { type Region } from "@/engine/domain/order";
 import { stageX, type StageId } from "./geometry";
 
 /**
@@ -84,6 +85,23 @@ export interface Pulse {
   readonly y: number;
   /** The forward event the pulse currently embodies — what S1.6+ encode/animate off. */
   readonly kind: EventKind;
+  /** The element's group region (from its `emit`) — drives hue + glyph (S1.6). */
+  readonly region: Region;
+  /** The element's total the encoding sizes/labels off. Initial (pre-map) value; the morph is S1.8. */
+  readonly total: number;
+}
+
+/** The element's payload from its `emit` — region (fixed) and the pre-map total. */
+function emitPayloadOf(
+  log: readonly EngineEvent[],
+  elementId: number,
+): { region: Region; total: number } | null {
+  for (const event of log) {
+    if (event.kind === "emit" && event.elementId === elementId) {
+      return { region: event.input.region, total: event.input.total };
+    }
+  }
+  return null;
 }
 
 /**
@@ -133,13 +151,23 @@ export function projectScene(log: readonly EngineEvent[], playhead: number): Sce
   // while the next event continues *this* element's journey.
   const fromX = forwardStationX(current.kind);
   if (fromX !== null && current.elementId !== undefined) {
-    const nextX =
-      next && next.elementId === current.elementId ? forwardStationX(next.kind) : null;
-    const toX = nextX ?? fromX; // no continuation ⇒ hold in place (resting/fading)
-    return {
-      demandSpike: null,
-      pulse: { elementId: current.elementId, x: lerp(fromX, toX, frac), y: 0, kind: current.kind },
-    };
+    const payload = emitPayloadOf(log, current.elementId);
+    if (payload) {
+      const nextX =
+        next && next.elementId === current.elementId ? forwardStationX(next.kind) : null;
+      const toX = nextX ?? fromX; // no continuation ⇒ hold in place (resting/fading)
+      return {
+        demandSpike: null,
+        pulse: {
+          elementId: current.elementId,
+          x: lerp(fromX, toX, frac),
+          y: 0,
+          kind: current.kind,
+          region: payload.region,
+          total: payload.total,
+        },
+      };
+    }
   }
 
   // A non-heartbeat event (parallel `fork`/`lane-demand`/… — later epics). Nothing
