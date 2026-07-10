@@ -4,11 +4,13 @@
  * flags this as the half of the engine the multithread button adds; it is built up
  * across three stories:
  *
- *   - **S3.1 (here):** recursive-halving `fork`, then each lane's `lane-demand →
- *     emit` beats woven together by the seeded scheduler. Proves the fork geometry,
- *     the interleaving, and the per-lane single-file heartbeat.
- *   - **S3.2:** each lane runs its own `filter → map` into **private** partial bins
- *     (lane-tagged `test/survive/die/transform/route/accumulate`).
+ *   - **S3.1:** recursive-halving `fork`, then each lane's `lane-demand → emit` beats
+ *     woven together by the seeded scheduler — the fork geometry, the interleaving,
+ *     and the per-lane single-file heartbeat.
+ *   - **S3.2 (here):** each lane runs its own `filter → map` into **private** partial
+ *     bins, driving the *real* op sinks through a lane-tagging recorder so a lane's
+ *     `test/survive/die/transform/route/accumulate` events carry its `lane` and its
+ *     counts never touch another lane's (spec §3.6, no cross-lane contamination).
  *   - **S3.3:** a `combine` beat merges the partial bins into the final grouping —
  *     provably equal to the sequential result (== oracle) for all seeds/threads.
  *
@@ -16,15 +18,22 @@
  * recorded independently, then interleaved into a single recorder whose append order
  * is the logical `tick`. So the log stays deterministic and golden-stable, and the
  * "one spike per lane at a time" guarantee is a property of the beat structure, not
- * of timing.
+ * of timing. Each lane reuses the same `filter`/`map`/`collect` sinks the sequential
+ * pipeline uses (via {@link EventSink}), so per-lane semantics cannot drift from
+ * sequential — the foundation S3.3's equivalence rests on.
  *
  * Zero React/Next imports (kernel boundary — see `./README.md`).
  */
 import { orderSnapshot, type EngineEvent } from "./domain/event";
-import { type Order } from "./domain/order";
-import { EventRecorder, type TicklessEvent } from "./kernel/recorder";
+import { type Order, type Region } from "./domain/order";
+import { EventRecorder, type EventSink, type TicklessEvent } from "./kernel/recorder";
+import { type Sink } from "./kernel/sink";
+import { arraySpliterator } from "./kernel/spliterator";
 import { splitRecursive, type LanePartition, type ThreadCount } from "./kernel/split";
 import { buildSchedule } from "./kernel/scheduler";
+import { sliceFilterOp } from "./ops/filter";
+import { sliceMapOp } from "./ops/map";
+import { groupingByRegionSink } from "./ops/collect";
 
 /** The parallel run's configuration — how many lanes and which interleaving seed. */
 export interface ParallelConfig {
@@ -33,38 +42,99 @@ export interface ParallelConfig {
 }
 
 /**
- * A lane's traversal expressed as **beats**: `elementBeats[i]` is the contiguous run
- * of (tickless, lane-tagged) events for the lane's `i`-th pulled element — a
- * `lane-demand` opening the beat, then the element's `emit` and (S3.2+) its `filter →
- * map → accumulate` journey. `trailingBeat` is the final `lane-demand` that pulls the
- * now-exhausted lane and finds nothing (the lane powering down — the parallel mirror
- * of the sequential runner's N+1-th demand). Interleaving happens at beat
- * granularity, so a beat is never split across lanes: within a lane, one element is
- * fully resolved before the lane is serviced again (AC4).
+ * A lane recorder: an {@link EventSink} the op sinks emit into, which **tags every
+ * event with the lane** and **segments the stream into beats**. A beat opens on each
+ * `startBeat()` (a `lane-demand`) and collects the events for that one pull. Because
+ * the op sinks call only `record`, they run byte-for-byte as they do sequentially —
+ * this recorder just stamps the lane and the beat boundary around their output.
  */
-interface LaneBeats {
-  readonly elementBeats: readonly (readonly TicklessEvent[])[];
-  readonly trailingBeat: readonly TicklessEvent[];
-}
+class LaneRecorder implements EventSink {
+  private readonly beats: TicklessEvent[][] = [];
+  private current: TicklessEvent[] | null = null;
 
-/** The lane-demand that opens (or, trailing, closes) a lane's beat. */
-function laneDemand(lane: string): TicklessEvent {
-  return { kind: "lane-demand", op: "collect", lane, nextStage: "source" };
+  constructor(private readonly lane: string) {}
+
+  /** Open a new beat with the lane's retrograde `lane-demand` (the pull spike). */
+  startBeat(): void {
+    this.current = [{ kind: "lane-demand", op: "collect", lane: this.lane, nextStage: "source" }];
+    this.beats.push(this.current);
+  }
+
+  /** Record the source releasing `order` into this lane — the lane-tagged `emit`. */
+  emit(order: Order): void {
+    this.current!.push({
+      kind: "emit",
+      elementId: order.id,
+      op: "source",
+      lane: this.lane,
+      input: orderSnapshot(order),
+    });
+  }
+
+  /** The {@link EventSink} the ops use: append the event to the current beat, lane-tagged. */
+  record(event: TicklessEvent): number {
+    const tagged = { ...event, lane: this.lane } as TicklessEvent;
+    this.current!.push(tagged);
+    return this.current!.length;
+  }
+
+  /** Every recorded beat, in order — the last is the trailing (exhaustion) pull. */
+  allBeats(): readonly (readonly TicklessEvent[])[] {
+    return this.beats;
+  }
 }
 
 /**
- * Traverse one lane's partition into beats (S3.1 shape: `lane-demand → emit`). Each
- * element gets its own beat; a final trailing beat marks exhaustion. S3.2 grows the
- * per-element beat with the `filter → map → accumulate` events, but the beat
- * segmentation — one element fully resolved per beat — is fixed here.
+ * A lane's traversal expressed as beats plus its private partial bins. `elementBeats`
+ * is one contiguous run of events per pulled element (its `lane-demand → emit → test
+ * → survive/die → transform → route → accumulate` journey); `trailingBeat` is the
+ * final `lane-demand` that pulls the exhausted lane and finds nothing (the lane
+ * powering down). `bins` are the lane's **private** grouping — untouched by other
+ * lanes, merged only at `combine` (S3.3).
  */
-function runLane(partition: LanePartition): LaneBeats {
-  const { lane, orders } = partition;
-  const elementBeats = orders.map((order): readonly TicklessEvent[] => [
-    laneDemand(lane),
-    { kind: "emit", elementId: order.id, op: "source", lane, input: orderSnapshot(order) },
-  ]);
-  return { elementBeats, trailingBeat: [laneDemand(lane)] };
+interface LaneRun {
+  readonly elementBeats: readonly (readonly TicklessEvent[])[];
+  readonly trailingBeat: readonly TicklessEvent[];
+  readonly bins: Map<Region, Order[]>;
+}
+
+/**
+ * Run one lane's partition through its own `filter → map → collect(groupingBy)` sink
+ * chain, into a {@link LaneRecorder}. Mirrors the sequential runner's pull loop —
+ * one `lane-demand` per beat, exactly one element resolved before the next — so the
+ * per-lane log is single-file and the per-lane bins accumulate in encounter order,
+ * identically to a sequential run over just this partition. Slice A grouping never
+ * short-circuits, so the loop always runs to the lane's exhaustion.
+ */
+function runLane(partition: LanePartition): LaneRun {
+  const rec = new LaneRecorder(partition.lane);
+  const terminalSink = groupingByRegionSink(rec);
+  const ops = [sliceFilterOp(), sliceMapOp()];
+
+  // Build the sink chain terminal-first, exactly as runSequential does.
+  let head: Sink<Order> = terminalSink;
+  for (let i = ops.length - 1; i >= 0; i -= 1) {
+    head = ops[i]!.wrap(head, rec);
+  }
+
+  const source = arraySpliterator(partition.orders);
+  head.begin(source.getExactSizeIfKnown());
+  let more: boolean;
+  do {
+    rec.startBeat();
+    more = source.tryAdvance((element) => {
+      rec.emit(element);
+      head.accept(element);
+    });
+  } while (more);
+  head.end();
+
+  const beats = rec.allBeats();
+  return {
+    elementBeats: beats.slice(0, -1),
+    trailingBeat: beats[beats.length - 1]!,
+    bins: terminalSink.result(),
+  };
 }
 
 /**
@@ -75,16 +145,15 @@ function runLane(partition: LanePartition): LaneBeats {
  * element beats woven together in the scheduler's seeded order — each lane's beats
  * consumed in encounter order, so per-lane single-file holds — with each lane's
  * trailing `lane-demand` emitted the moment its last element is serviced. A lane with
- * an *empty* partition (possible when a short list is over-split, e.g. 1 element into
- * 4 lanes) still powers up and finds nothing: its trailing beat fires right after the
- * fork.
+ * an *empty* partition (a short list over-split, e.g. 1 element into 4 lanes) still
+ * powers up and finds nothing: its trailing beat fires right after the fork.
  */
 export function runParallel(
   orders: readonly Order[],
   { threadCount, seed }: ParallelConfig,
 ): { readonly log: readonly EngineEvent[] } {
   const { tree, lanes } = splitRecursive(orders, threadCount);
-  const laneBeats = lanes.map(runLane);
+  const laneRuns = lanes.map(runLane);
 
   const rec = new EventRecorder();
   rec.record({ kind: "fork", op: "fork", lanes: threadCount, splitTree: tree });
@@ -93,7 +162,7 @@ export function runParallel(
   // down immediately after the fork — they were demanded once and found nothing.
   lanes.forEach((lane, i) => {
     if (lane.orders.length === 0) {
-      for (const event of laneBeats[i]!.trailingBeat) rec.record(event);
+      for (const event of laneRuns[i]!.trailingBeat) rec.record(event);
     }
   });
 
@@ -103,13 +172,13 @@ export function runParallel(
   );
   const cursor = lanes.map(() => 0);
   for (const laneIdx of schedule) {
-    const beats = laneBeats[laneIdx]!;
-    const beat = beats.elementBeats[cursor[laneIdx]!]!;
+    const run = laneRuns[laneIdx]!;
+    const beat = run.elementBeats[cursor[laneIdx]!]!;
     cursor[laneIdx]! += 1;
     for (const event of beat) rec.record(event);
     // The lane's last element just resolved — power it down with its trailing pull.
-    if (cursor[laneIdx] === beats.elementBeats.length) {
-      for (const event of beats.trailingBeat) rec.record(event);
+    if (cursor[laneIdx] === run.elementBeats.length) {
+      for (const event of run.trailingBeat) rec.record(event);
     }
   }
 

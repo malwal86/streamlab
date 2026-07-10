@@ -31,7 +31,7 @@ import { orderSnapshot } from "../domain/event";
 import { FILTER_THRESHOLD } from "../domain/fixture";
 import { type Order } from "../domain/order";
 import { NO_FLAGS } from "../kernel/flags";
-import { type EventRecorder } from "../kernel/recorder";
+import { type EventSink } from "../kernel/recorder";
 import { ChainedSink, type Sink } from "../kernel/sink";
 import { SIZE_UNKNOWN } from "../kernel/spliterator";
 import { type StreamOp } from "../kernel/runner";
@@ -48,7 +48,7 @@ const OP_NAME = "filter";
 class FilterSink extends ChainedSink<Order, Order> {
   constructor(
     downstream: Sink<Order>,
-    private readonly rec: EventRecorder,
+    private readonly rec: EventSink,
     private readonly predicate: string,
     private readonly test: (order: Order) => boolean,
   ) {

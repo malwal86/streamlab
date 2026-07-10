@@ -29,7 +29,7 @@
  */
 import { type Order, type Region } from "../domain/order";
 import { OpFlag } from "../kernel/flags";
-import { type EventRecorder } from "../kernel/recorder";
+import { type EventSink } from "../kernel/recorder";
 import { type Terminal, type TerminalSink } from "../kernel/runner";
 
 /** The terminal name carried on every `demand`/`route`/`accumulate` `op` field. */
@@ -44,7 +44,7 @@ const OP_NAME = "collect";
 class GroupingByRegionSink implements TerminalSink<Map<Region, Order[]>> {
   private readonly bins = new Map<Region, Order[]>();
 
-  constructor(private readonly rec: EventRecorder) {}
+  constructor(private readonly rec: EventSink) {}
 
   begin(_size: number): void {
     // A `Map` grows as keys appear; nothing to pre-size. (A `filter` upstream has
@@ -90,4 +90,17 @@ export function groupingByRegionTerminal(): Terminal<Map<Region, Order[]>> {
     flags: OpFlag.STATEFUL,
     makeSink: (rec) => new GroupingByRegionSink(rec),
   };
+}
+
+/**
+ * Build a bare grouping sink over any {@link EventSink} — the seam the **parallel
+ * lane runner** (S3.2) drives directly, without the {@link Terminal} wrapper. Each
+ * lane gets its own sink, so its `bins` (`result()`) are the lane's **private
+ * partial bins**, and its lane-tagged `route`/`accumulate` events never touch
+ * another lane's counts. The combiner (S3.3) merges these partials into the final
+ * grouping. Identical accumulation logic to the sequential terminal — the whole
+ * point of sharing the sink — so a lane's per-region ordering matches sequential.
+ */
+export function groupingByRegionSink(rec: EventSink): TerminalSink<Map<Region, Order[]>> {
+  return new GroupingByRegionSink(rec);
 }
