@@ -99,6 +99,13 @@
   margin-right: 0.15rem;
 }
 
+.hint {
+  font: 500 0.68rem "Roboto Mono", ui-monospace, monospace;
+  color: #6f83a6;
+  margin-left: 0.1rem;
+  white-space: nowrap;
+}
+
 .segOn,
 .segOff {
   padding: 0.28rem 0.7rem;

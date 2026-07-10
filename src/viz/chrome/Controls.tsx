@@ -4,15 +4,20 @@ import { useAppStore } from "@/store/appStore";
 import styles from "./chrome.module.css";
 
 /**
- * Pipeline configuration controls (S2.4 + S3.6, spec §7): the **slice selector** (A
- * grouping ⇄ B short-circuit), the Slice-B **`findFirst` ⇄ `findAny` toggle**, and —
- * as of S3.6 — the **mode** (sequential ⇄ multithread), the **2/4 thread selector**,
- * and a **seed** control. Every control calls the store's config action, which
- * re-runs the *real engine*, swaps in a fresh frozen log, and resets the playhead
- * (R3 / S0.7) — so switching mode/threads/seed genuinely rebuilds the pipeline trace
- * (a forked, seed-interleaved log for Slice A parallel), never a viz hack (AC1). The
- * sequential path is untouched (AC2), and changing the seed re-interleaves the lanes
- * (AC3) while the merged result stays invariant.
+ * Pipeline configuration controls (S2.4 + S3.6 + S4.4, spec §7): the **slice
+ * selector** (A grouping ⇄ B short-circuit), the Slice-B **`findFirst` ⇄ `findAny`
+ * toggle**, the **mode** (sequential ⇄ multithread), the **2/4 thread selector**, and a
+ * **seed** control. Every control calls the store's config action, which re-runs the
+ * *real engine*, swaps in a fresh frozen log, and resets the playhead (R3 / S0.7) — so
+ * switching mode/threads/seed genuinely rebuilds the pipeline trace, never a viz hack
+ * (AC1). The sequential path is untouched (AC2), and changing the seed re-interleaves
+ * the lanes (AC3) while the merged result stays invariant.
+ *
+ * S4.4: in Slice B **parallel** the `findFirst`/`findAny` toggle re-runs the racer
+ * (`runParallelFind`) on the *same seed*, so the canonical interview contrast —
+ * ordered wait+cancel vs first-lane-home — is visible side-by-side (Decision 31). The
+ * "ordered vs first-home" hint marks that this toggle now diverges (it is identical
+ * sequentially). The seed persists across the toggle, so the comparison is same-seed.
  *
  * Segmented native `<button>`s with `aria-pressed`, grouped and labelled, so the
  * controls are keyboard-drivable and screen-reader legible (the DoD a11y bar). The
@@ -69,6 +74,12 @@ export function Controls() {
           >
             findAny
           </button>
+          {parallel && (
+            // Sequentially the two are identical; in parallel they diverge — findFirst
+            // holds out for the encounter-order-earliest match, findAny takes the first
+            // lane home. The hint marks where that A/B contrast lives (S4.4).
+            <span className={styles.hint}>ordered vs first-home</span>
+          )}
         </div>
       )}
 

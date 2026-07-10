@@ -121,6 +121,43 @@ describe("S3.6 multithread controls — mode / threads / seed (AC1–AC3)", () =
   });
 });
 
+describe("S4.4 parallel terminal toggle — the findFirst⇄findAny contrast (chrome)", () => {
+  it("Slice B parallel shows the ordered-vs-first-home hint by the terminal toggle", () => {
+    act(() => useAppStore.getState().setSlice("B"));
+    render(<Controls />);
+    // Sequential Slice B: the toggle exists but no hint (the two are identical).
+    expect(screen.queryByText(/ordered vs first-home/i)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /multithread/i }));
+    // In parallel the hint appears — this is where the A/B contrast lives.
+    expect(screen.getByText(/ordered vs first-home/i)).toBeInTheDocument();
+  });
+
+  it("toggling findAny in Slice B parallel rebuilds a real forked short-circuit log", () => {
+    act(() => useAppStore.getState().setSlice("B"));
+    act(() => useAppStore.getState().setMode("parallel"));
+    render(<Controls />);
+
+    fireEvent.click(screen.getByRole("button", { name: /findAny/i }));
+
+    const log = useAppStore.getState().eventLog;
+    expect(useAppStore.getState().config.terminal).toBe("findAny");
+    expect(log.some((e) => e.kind === "fork")).toBe(true);
+    expect(log.some((e) => e.kind === "found")).toBe(true);
+    expect(log.some((e) => e.kind === "cancel")).toBe(true);
+  });
+
+  it("the code panel reads parallelStream() under multithread, stream() sequentially", () => {
+    act(() => useAppStore.getState().setSlice("B"));
+    render(<CodePanel />);
+    expect(screen.getByText(/orders\.stream\(\)/)).toBeInTheDocument();
+
+    act(() => useAppStore.getState().setMode("parallel"));
+    expect(screen.getByText(/orders\.parallelStream\(\)/)).toBeInTheDocument();
+    expect(screen.getByText(/\.findFirst\(\)/)).toBeInTheDocument();
+  });
+});
+
 describe("S2.4 code panel — tracks the selected slice/terminal", () => {
   it("shows the grouping collector for Slice A", () => {
     render(<CodePanel />);
