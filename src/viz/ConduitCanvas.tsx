@@ -15,7 +15,7 @@ export default function ConduitCanvas() {
   return (
     <Canvas
       data-testid="conduit-canvas"
-      camera={{ position: [0, 2.5, 18], fov: 50 }}
+      camera={{ position: [1, 3, 21], fov: 50 }}
       dpr={[1, 2]}
     >
       <ConduitScene />
