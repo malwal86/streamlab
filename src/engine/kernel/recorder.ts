@@ -32,11 +32,25 @@ export type TicklessEvent = DistributiveOmit<EngineEvent, "tick">;
 type DemandFields = Omit<DemandEvent, "kind" | "tick">;
 
 /**
+ * The narrow event-emitting capability an **op sink** depends on: just `record`.
+ * The sequential {@link EventRecorder} implements it, and so does the parallel
+ * lane recorder (`parallel.ts`), which injects a `lane` tag and segments events
+ * into beats. Depending on this interface (not the concrete recorder) is what lets
+ * `filter`/`map`/`collect` run **unchanged** inside a lane — the same op semantics
+ * per lane as sequentially, so S3.3's "merged bins == sequential" can hold by
+ * construction rather than by a re-implementation that might drift.
+ */
+export interface EventSink {
+  /** Append a tickless event; the implementer stamps ordering (and may tag a lane). */
+  record(event: TicklessEvent): number;
+}
+
+/**
  * Accumulates the ordered event log for one engine run. Not reusable across runs —
  * construct one per `runSequential` call so ticks start at 0 and the log is a clean
  * slate (test-isolation, per tdd-guidelines §4.5).
  */
-export class EventRecorder {
+export class EventRecorder implements EventSink {
   private readonly events: EngineEvent[] = [];
   private nextTick = 0;
   private emits = 0;

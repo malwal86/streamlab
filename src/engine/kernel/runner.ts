@@ -24,7 +24,7 @@
 import { type EngineEvent } from "../domain/event";
 import { type Order } from "../domain/order";
 import { combineFlags, hasFlag, NO_FLAGS, OpFlag, type FlagSet } from "./flags";
-import { EventRecorder } from "./recorder";
+import { EventRecorder, type EventSink } from "./recorder";
 import { type Sink } from "./sink";
 import { arraySpliterator, type Spliterator } from "./spliterator";
 
@@ -38,7 +38,9 @@ import { arraySpliterator, type Spliterator } from "./spliterator";
 export interface StreamOp {
   readonly name: string;
   readonly flags: FlagSet;
-  wrap(downstream: Sink<Order>, rec: EventRecorder): Sink<Order>;
+  // `rec` is the narrow {@link EventSink} (just `record`), not the concrete recorder,
+  // so the same op runs unchanged inside a parallel lane (S3.2) where `rec` tags a lane.
+  wrap(downstream: Sink<Order>, rec: EventSink): Sink<Order>;
 }
 
 /**

@@ -27,7 +27,7 @@
  */
 import { applyDiscount, type Order } from "../domain/order";
 import { NO_FLAGS } from "../kernel/flags";
-import { type EventRecorder } from "../kernel/recorder";
+import { type EventSink } from "../kernel/recorder";
 import { ChainedSink, type Sink } from "../kernel/sink";
 import { type StreamOp } from "../kernel/runner";
 
@@ -43,7 +43,7 @@ const OP_NAME = "map";
 class MapSink extends ChainedSink<Order, Order> {
   constructor(
     downstream: Sink<Order>,
-    private readonly rec: EventRecorder,
+    private readonly rec: EventSink,
     private readonly transform: (order: Order) => Order,
   ) {
     super(downstream);
