@@ -35,6 +35,10 @@ interface StoreState {
   eventLog: readonly EngineEvent[];
   /** Fractional playhead; interpolated between events by the selector (interpolation: S1.5). */
   playhead: number;
+  /** Whether the playback clock is advancing the playhead (transport play/pause, S1.10). */
+  playing: boolean;
+  /** Playback rate in events per second (transport speed, S1.10). */
+  speed: number;
 
   // Config actions — each patches one field, then re-runs the engine (R3).
   setSlice: (slice: Config["slice"]) => void;
@@ -43,9 +47,17 @@ interface StoreState {
   setSeed: (seed: Config["seed"]) => void;
   setTerminal: (terminal: Config["terminal"]) => void;
 
-  /** Move the playhead (transport scrubbing — the UI arrives in S1.10). Does not re-run the engine. */
+  /** Move the playhead (transport scrubbing). Does not re-run the engine. */
   setPlayhead: (playhead: number) => void;
+  /** Set play/pause; toggle flips it. The playback clock (S1.5/S1.10) reads this. */
+  setPlaying: (playing: boolean) => void;
+  togglePlaying: () => void;
+  /** Set the playback rate (events per second). */
+  setSpeed: (speed: number) => void;
 }
+
+/** Default playback rate — events per second when playing (S1.10). */
+export const DEFAULT_SPEED = 4;
 
 export const useAppStore = create<StoreState>((set) => {
   /**
@@ -64,6 +76,8 @@ export const useAppStore = create<StoreState>((set) => {
     config: DEFAULT_CONFIG,
     eventLog: runEngine(DEFAULT_CONFIG),
     playhead: PLAYHEAD_START,
+    playing: true,
+    speed: DEFAULT_SPEED,
 
     setSlice: (slice) => applyConfig({ slice }),
     setMode: (mode) => applyConfig({ mode }),
@@ -72,5 +86,8 @@ export const useAppStore = create<StoreState>((set) => {
     setTerminal: (terminal) => applyConfig({ terminal }),
 
     setPlayhead: (playhead) => set({ playhead }),
+    setPlaying: (playing) => set({ playing }),
+    togglePlaying: () => set((state) => ({ playing: !state.playing })),
+    setSpeed: (speed) => set({ speed }),
   };
 });

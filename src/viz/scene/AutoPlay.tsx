@@ -4,23 +4,28 @@ import { useFrame } from "@react-three/fiber";
 import { useAppStore } from "@/store/appStore";
 
 /**
- * A minimal autoplay driver (S1.5) — advances the store playhead over wall-clock
- * time so the heartbeat *plays* before real transport exists. `speed` is events per
- * second; the playhead loops back to the start at the end of the log.
- *
- * This is a stand-in the transport (S1.10) supersedes: once play/pause/scrub/speed
- * land, that owns the playhead and this component is removed. Kept deliberately
- * small so the seam is clean. It mutates only the playhead (never the log) via
- * `getState()`, so it does not itself subscribe or re-render.
+ * The playback clock (S1.5 → driven by transport in S1.10): advances the store
+ * playhead over wall-clock time while `playing`, at `speed` events per second. It
+ * reads play-state and speed from the store, so the transport's play/pause/speed
+ * controls steer it. On reaching the end it stops at the last event and clears
+ * `playing` (the autoplay finished) — the transport, or S5.1's cinematic loop, can
+ * restart it. It mutates only playhead/playing via `getState()`, never the log.
  */
-export function AutoPlay({ speed = 5 }: { speed?: number }) {
+export function AutoPlay() {
   const length = useAppStore((s) => s.eventLog.length);
 
   useFrame((_, delta) => {
-    const { playhead, setPlayhead } = useAppStore.getState();
-    const end = Math.max(0, length - 1);
+    const { playing, speed, playhead, setPlayhead, setPlaying } = useAppStore.getState();
+    if (!playing || length === 0) return;
+
+    const end = length - 1;
     const next = playhead + delta * speed;
-    setPlayhead(next > end ? 0 : next);
+    if (next >= end) {
+      setPlayhead(end);
+      setPlaying(false); // reached the end — pause; transport can replay
+    } else {
+      setPlayhead(next);
+    }
   });
 
   return null;
