@@ -39,6 +39,7 @@ type DemandFields = Omit<DemandEvent, "kind" | "tick">;
 export class EventRecorder {
   private readonly events: EngineEvent[] = [];
   private nextTick = 0;
+  private emits = 0;
 
   /**
    * Append `event`, stamping the next logical tick. The single entry point every
@@ -70,6 +71,7 @@ export class EventRecorder {
    * emission is always the source releasing an element.
    */
   emit(order: Order): number {
+    this.emits += 1;
     return this.record({
       kind: "emit",
       elementId: order.id,
@@ -81,6 +83,18 @@ export class EventRecorder {
   /** The number of events recorded so far (also the next tick to be assigned). */
   get size(): number {
     return this.nextTick;
+  }
+
+  /**
+   * How many elements the source has released so far — the count of `emit`s. This
+   * is the **pulled count** a short-circuit terminal needs: when `findFirst`
+   * latches and traversal stops (E2), `sourceSize - emitCount` is the remainder
+   * the source was never asked for (`shortcircuit.remainingUnpulled`). Exposed
+   * here because the recorder is the one place that sees every emit; the terminal
+   * sink downstream of a `filter` only ever sees survivors, not pulls.
+   */
+  get emitCount(): number {
+    return this.emits;
   }
 
   /**
