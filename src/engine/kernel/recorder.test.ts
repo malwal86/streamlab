@@ -75,4 +75,15 @@ describe("EventRecorder", () => {
     rec.emit(ORDERS[1]!);
     expect(rec.size).toBe(2);
   });
+
+  it("emitCount tracks only emits — the pulled count a short-circuit terminal reads (S2.1)", () => {
+    const rec = new EventRecorder();
+    expect(rec.emitCount).toBe(0);
+    rec.demand(); // pulls do not count
+    rec.emit(ORDERS[0]!);
+    rec.record({ kind: "die", elementId: 1, op: "filter" }); // other events do not count
+    expect(rec.emitCount).toBe(1);
+    rec.emit(ORDERS[1]!);
+    expect(rec.emitCount).toBe(2);
+  });
 });

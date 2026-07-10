@@ -61,3 +61,20 @@ export function isSingleFilePull(log: readonly EngineEvent[]): boolean {
 export function countKind(log: readonly EngineEvent[], kind: EngineEvent["kind"]): number {
   return log.reduce((n, event) => (event.kind === kind ? n + 1 : n), 0);
 }
+
+/**
+ * The short-circuit invariant (S2.1 AC2): once a `findFirst`/`findAny` terminal
+ * records `found`, **no `demand` or `emit` may follow** — traversal must never pull
+ * past the decisive element. Returns the ticks of any offending pull events after
+ * the first `found` (empty when the log never short-circuits, or short-circuits
+ * cleanly). A pure function of the log, so it holds the terminal to its promise
+ * without reaching into the engine.
+ */
+export function pullsAfterFound(log: readonly EngineEvent[]): readonly number[] {
+  const foundIndex = log.findIndex((event) => event.kind === "found");
+  if (foundIndex < 0) return [];
+  return log
+    .slice(foundIndex + 1)
+    .filter((event) => event.kind === "demand" || event.kind === "emit")
+    .map((event) => event.tick);
+}

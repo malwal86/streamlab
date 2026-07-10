@@ -1,0 +1,92 @@
+[
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "find",
+    "tick": 0
+  },
+  {
+    "elementId": 1,
+    "input": {
+      "region": "West",
+      "total": 80
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 1
+  },
+  {
+    "elementId": 1,
+    "input": {
+      "region": "West",
+      "total": 80
+    },
+    "kind": "test",
+    "op": "filter",
+    "output": false,
+    "predicate": "o.total > 100",
+    "tick": 2
+  },
+  {
+    "elementId": 1,
+    "kind": "die",
+    "op": "filter",
+    "tick": 3
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "find",
+    "tick": 4
+  },
+  {
+    "elementId": 2,
+    "input": {
+      "region": "West",
+      "total": 1200
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 5
+  },
+  {
+    "elementId": 2,
+    "input": {
+      "region": "West",
+      "total": 1200
+    },
+    "kind": "test",
+    "op": "filter",
+    "output": true,
+    "predicate": "o.total > 100",
+    "tick": 6
+  },
+  {
+    "elementId": 2,
+    "kind": "survive",
+    "nextStage": "map",
+    "op": "filter",
+    "tick": 7
+  },
+  {
+    "after": 1080,
+    "before": 1200,
+    "elementId": 2,
+    "kind": "transform",
+    "nextStage": "collect",
+    "op": "map",
+    "tick": 8
+  },
+  {
+    "elementId": 2,
+    "kind": "found",
+    "op": "find",
+    "tick": 9
+  },
+  {
+    "kind": "shortcircuit",
+    "op": "find",
+    "remainingUnpulled": 9,
+    "tick": 10
+  }
+]

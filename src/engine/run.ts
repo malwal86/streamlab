@@ -5,19 +5,20 @@
  * the pure kernel, is what lets the store stay a thin Zustand wrapper while the
  * engine stays free of React/Next/Zustand (the S0.7 import boundary).
  *
- * **Slice A sequential** is real as of S1.3 — `filter → map → collect(groupingBy)`
- * (see `./pipelines`). The other three quadrants (Slice B `find*` in E2, and both
- * slices' parallel scheduler in E3) still fall back to the identity pipeline: an
- * honest, well-formed placeholder log so the store's swap machinery, the transport,
- * and the viz chassis are all exercised now and the real pipelines drop in under
- * this function later without the store or runner changing.
+ * **Both sequential quadrants are real:** Slice A as of S1.3 — `filter → map →
+ * collect(groupingBy)` — and Slice B as of S2.1 — `filter → map → findFirst()`
+ * (identical to `findAny()` sequentially). The two *parallel* quadrants (E3) still
+ * fall back to the identity pipeline: an honest, well-formed placeholder log so the
+ * store's swap machinery, the transport, and the viz chassis are all exercised now
+ * and the real scheduler drops in under this function later without the store or
+ * runner changing.
  *
  * Zero React/Next imports (kernel boundary — see `./README.md`).
  */
 import { type EngineEvent } from "./domain/event";
 import { ORDERS } from "./domain/fixture";
 import { identityPipeline, runSequential, type Pipeline } from "./kernel/runner";
-import { sliceASequentialPipeline } from "./pipelines";
+import { sliceASequentialPipeline, sliceBSequentialPipeline } from "./pipelines";
 
 /**
  * The engine-run configuration (R3). Selects *which* pipeline `runEngine` builds:
@@ -55,19 +56,22 @@ export const DEFAULT_CONFIG: Config = {
  * reference across the playhead projection and goldens without any risk of a
  * consumer mutating history.
  *
- * Slice A sequential runs the real grouping pipeline; every other quadrant is the
- * identity placeholder until its ops land (see the module note). Selection lives
- * here so the store stays a thin wrapper — it hands a `Config` in and gets a log
- * back, never knowing which pipeline produced it.
+ * Both sequential slices run their real pipeline; the parallel quadrants are the
+ * identity placeholder until the scheduler lands (see the module note). Selection
+ * lives here so the store stays a thin wrapper — it hands a `Config` in and gets a
+ * log back, never knowing which pipeline produced it.
  */
 export function runEngine(config: Config): readonly EngineEvent[] {
-  const isSliceASequential = config.slice === "A" && config.mode === "sequential";
-  // Typed as `Pipeline<unknown>`: the two branches produce different result types
-  // (grouped bins vs the identity list), but `runEngine` returns only the log and
-  // discards the result, so the result type is immaterial here.
-  const pipeline: Pipeline<unknown> = isSliceASequential
-    ? sliceASequentialPipeline(ORDERS)
-    : identityPipeline(ORDERS);
+  const sequential = config.mode === "sequential";
+  // Typed as `Pipeline<unknown>`: the branches produce different result types
+  // (grouped bins / the found element / the identity list), but `runEngine`
+  // returns only the log and discards the result, so the type is immaterial here.
+  const pipeline: Pipeline<unknown> =
+    sequential && config.slice === "A"
+      ? sliceASequentialPipeline(ORDERS)
+      : sequential && config.slice === "B"
+        ? sliceBSequentialPipeline(ORDERS)
+        : identityPipeline(ORDERS);
   const { log } = runSequential(pipeline);
   return log;
 }
