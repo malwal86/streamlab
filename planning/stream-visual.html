@@ -1,0 +1,905 @@
+<title>StreamLab — Java Stream API, sequential &amp; parallel</title>
+<style>
+  :root{
+    --src:#22d3ee; --filter:#4ade80; --map:#fbbf24; --limit:#fb7185; --collect:#60a5fa;
+    --t0:#22d3ee; --t1:#fb923c; --t2:#a78bfa; --t3:#f472b6;
+    --bg:#eef1f8; --bg-2:#e6eaf4;
+    --panel:#ffffff; --panel-2:#f5f7fd;
+    --ink:#0f1626; --muted:#55617c; --faint:#8b96af;
+    --line:rgba(18,28,56,.12); --line-2:rgba(18,28,56,.07);
+    --glow:.18;
+    --font-mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --font-disp:"SF Pro Display",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0b0f1a; --bg-2:#080b13; --panel:#121826; --panel-2:#0e1420;
+      --ink:#e7ecf8; --muted:#8b98b4; --faint:#5a6684;
+      --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.05); --glow:.5;
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#eef1f8; --bg-2:#e6eaf4; --panel:#ffffff; --panel-2:#f5f7fd;
+    --ink:#0f1626; --muted:#55617c; --faint:#8b96af;
+    --line:rgba(18,28,56,.12); --line-2:rgba(18,28,56,.07); --glow:.18;
+  }
+  :root[data-theme="dark"]{
+    --bg:#0b0f1a; --bg-2:#080b13; --panel:#121826; --panel-2:#0e1420;
+    --ink:#e7ecf8; --muted:#8b98b4; --faint:#5a6684;
+    --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.05); --glow:.5;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0}
+  .app{
+    min-height:100%;
+    background:
+      radial-gradient(1200px 600px at 78% -10%, color-mix(in srgb,var(--collect) 10%, transparent), transparent 60%),
+      radial-gradient(900px 500px at 6% 4%, color-mix(in srgb,var(--src) 9%, transparent), transparent 55%),
+      linear-gradient(180deg,var(--bg),var(--bg-2));
+    color:var(--ink); font-family:var(--font-mono); -webkit-font-smoothing:antialiased;
+    padding:clamp(14px,2.4vw,30px);
+  }
+  .wrap{max-width:1180px;margin:0 auto}
+
+  .topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  .brand{display:flex;flex-direction:column;gap:2px}
+  .word{display:flex;align-items:center;gap:12px}
+  .glyph{width:30px;height:30px;flex:0 0 auto}
+  .word h1{
+    margin:0;font-family:var(--font-disp);font-weight:800;letter-spacing:-.03em;
+    font-size:clamp(24px,3.4vw,34px);line-height:1;
+    background:linear-gradient(100deg,var(--src),var(--filter),var(--map),var(--limit),var(--collect));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .tagline{color:var(--muted);font-size:12.5px;letter-spacing:.02em;padding-left:42px}
+  .tagline b{color:var(--ink);font-weight:600}
+  .headright{display:flex;align-items:center;gap:10px}
+  .themebtn{display:inline-flex;align-items:center;gap:7px;cursor:pointer;background:var(--panel);
+    border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:7px 12px;font-family:var(--font-mono);font-size:12px}
+  .themebtn:hover{color:var(--ink);border-color:var(--collect)}
+
+  .code{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:12px 16px;font-size:clamp(12px,1.5vw,14.5px);line-height:1.9;overflow-x:auto;white-space:nowrap;letter-spacing:.01em}
+  .code .op{padding:1px 2px;border-radius:4px}
+  .code .dim{color:var(--faint)}
+  .op-src{color:var(--src)} .op-filter{color:var(--filter)} .op-map{color:var(--map)}
+  .op-limit{color:var(--limit)} .op-collect{color:var(--collect)}
+  .code .k{color:var(--muted)}
+  .code .par{color:var(--t1);font-weight:600}
+
+  .stage{display:grid;grid-template-columns:minmax(0,1fr) 288px;gap:18px;margin-top:18px;align-items:start}
+  .canvas-wrap{position:relative;background:var(--panel-2);border:1px solid var(--line);border-radius:16px;overflow-x:auto;overflow-y:hidden}
+  canvas{display:block;min-width:760px}
+
+  .rail{display:flex;flex-direction:column;gap:14px;min-width:0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px}
+  .card h3{margin:0 0 12px;font-size:11px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .metric{display:flex;flex-direction:column;gap:3px}
+  .metric .n{font-family:var(--font-disp);font-weight:800;font-size:26px;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .metric .l{font-size:10.5px;color:var(--muted);letter-spacing:.02em}
+  .metric.read .n{color:var(--src)} .metric.coll .n{color:var(--collect)}
+  .metric.skip .n{color:var(--limit)} .metric.pull .n{color:var(--map)}
+
+  .output{display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-height:32px}
+  .chip{font-variant-numeric:tabular-nums;font-weight:600;font-size:14px;
+    background:color-mix(in srgb,var(--chH,var(--collect)) 16%, var(--panel));
+    color:var(--chH,var(--collect));border:1px solid color-mix(in srgb,var(--chH,var(--collect)) 45%, transparent);
+    border-radius:8px;padding:5px 10px;animation:pop .28s ease}
+  .chip.trim{opacity:.32;text-decoration:line-through;filter:grayscale(.4)}
+  .out-empty{color:var(--faint);font-size:12px}
+  @keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+
+  /* wall-clock card */
+  .card h3 .tag{font-weight:500;letter-spacing:.04em;color:var(--faint);text-transform:none;
+    margin-left:6px;font-size:9.5px;border:1px solid var(--line);padding:1px 5px;border-radius:5px}
+  .wallmain{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:13px}
+  .walltime{display:flex;align-items:baseline;gap:4px}
+  .wall-n{font-family:var(--font-disp);font-weight:800;font-size:34px;line-height:1;letter-spacing:-.02em;
+    color:var(--collect);font-variant-numeric:tabular-nums}
+  .wall-u{font-size:13px;color:var(--muted)}
+  .speed-pill{font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;white-space:nowrap}
+  .speed-pill.neutral{background:color-mix(in srgb,var(--muted) 15%,transparent);color:var(--muted)}
+  .speed-pill.good{background:color-mix(in srgb,var(--filter) 18%,transparent);color:var(--filter)}
+  .speed-pill.warn{background:color-mix(in srgb,var(--limit) 18%,transparent);color:var(--limit)}
+  .wallbars{display:flex;flex-direction:column;gap:8px}
+  .wallbars[data-mode="seq"] .wb.base{display:none}
+  .wb{display:grid;grid-template-columns:50px 1fr 48px;align-items:center;gap:8px}
+  .wb-l{font-size:10.5px;color:var(--muted)}
+  .wb-track{height:9px;border-radius:5px;background:color-mix(in srgb,var(--ink) 7%,transparent);overflow:hidden}
+  .wb-fill{height:100%;border-radius:5px;transition:width .12s linear}
+  .wb-fill.this{background:linear-gradient(90deg,var(--src),var(--collect))}
+  .wb-fill.base{background:var(--faint)}
+  .wb-v{font-size:10.5px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+  .wallsub{margin-top:12px;font-size:11px;color:var(--muted)}
+  .wallsub b{color:var(--ink);font-weight:600}
+
+  .insight{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--line-2)}
+  .insight:first-of-type{border-top:0;padding-top:2px}
+  .insight .ic{flex:0 0 auto;width:20px;height:20px;margin-top:1px}
+  .insight .t{font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:2px}
+  .insight .d{font-size:11.5px;color:var(--muted);line-height:1.4}
+  .insight.on .t{color:var(--map)}
+
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
+  .btn{display:inline-flex;align-items:center;gap:7px;cursor:pointer;background:var(--panel-2);
+    border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 13px;font-family:var(--font-mono);font-size:12.5px;font-weight:500}
+  .btn:hover{border-color:var(--collect)}
+  .btn.primary{background:color-mix(in srgb,var(--collect) 18%,var(--panel));border-color:color-mix(in srgb,var(--collect) 50%,transparent);color:var(--ink)}
+  .btn svg{width:14px;height:14px}
+  .sep{width:1px;align-self:stretch;background:var(--line);margin:0 3px}
+  .seg{display:inline-flex;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{background:transparent;border:0;color:var(--muted);cursor:pointer;font-family:var(--font-mono);font-size:12px;padding:8px 11px}
+  .seg button[aria-pressed="true"]{background:color-mix(in srgb,var(--collect) 20%,transparent);color:var(--ink)}
+  .grp{display:inline-flex;align-items:center;gap:8px}
+  .grp .lab{font-size:11px;color:var(--muted);letter-spacing:.03em}
+  .stepper{display:inline-flex;align-items:center;gap:9px;margin-left:auto}
+  .stepper .lab{font-size:11px;color:var(--muted);letter-spacing:.03em}
+  .stepper .val{font-family:var(--font-disp);font-weight:800;font-size:19px;color:var(--limit);min-width:20px;text-align:center;font-variant-numeric:tabular-nums}
+  .rnd{width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;
+    background:var(--panel-2);border:1px solid var(--line);color:var(--ink);cursor:pointer;font-size:16px;line-height:1}
+  .rnd:hover{border-color:var(--limit)}
+  .rnd:disabled{opacity:.35;cursor:not-allowed}
+  :focus-visible{outline:2px solid var(--collect);outline-offset:2px;border-radius:6px}
+
+  .timeline{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px 16px 18px}
+  .tl-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .tl-head h3{margin:0;font-size:11px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+  .tl-head .hint{font-size:11px;color:var(--muted)}
+  .lanes{position:relative;display:flex;flex-direction:column;gap:9px}
+  .playhead{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.5;left:0;pointer-events:none;transition:left .05s linear}
+  .lane{display:grid;grid-template-columns:64px 1fr;align-items:center;gap:12px}
+  .lane .name{font-size:11px;text-align:right;color:var(--muted);letter-spacing:.02em}
+  .track{position:relative;height:14px;border-radius:7px}
+  .dot{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;transform:translate(-50%,-50%) scale(.55);
+    opacity:.22;transition:opacity .18s ease,transform .18s ease;border:1.5px solid transparent}
+  .dot.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  .dot.hollow{background:transparent!important}
+
+  .tip{margin-top:14px;color:var(--muted);font-size:12.5px;display:flex;align-items:center;gap:9px;padding-left:2px}
+  .tip svg{width:15px;height:15px;flex:0 0 auto;color:var(--map)}
+  .tip b{color:var(--ink);font-weight:600}
+  .tip code{background:color-mix(in srgb,var(--limit) 15%,transparent);color:var(--limit);padding:1px 5px;border-radius:4px}
+
+  @media (max-width:820px){ .stage{grid-template-columns:1fr} .stepper{margin-left:0} }
+  @media (prefers-reduced-motion:reduce){ .chip{animation:none} .dot,.playhead{transition:none} }
+</style>
+
+<div class="app">
+  <div class="wrap">
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="word">
+          <svg class="glyph" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path d="M3 9c5 0 5 5 10 5s5-5 10-5 5 3 6 3" stroke="url(#g1)" stroke-width="2.4" stroke-linecap="round"/>
+            <path d="M3 16c5 0 5 5 10 5s5-5 10-5 5 3 6 3" stroke="url(#g2)" stroke-width="2.4" stroke-linecap="round"/>
+            <path d="M3 23c5 0 5 5 10 5s5-5 10-5 5 3 6 3" stroke="url(#g3)" stroke-width="2.4" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="g1" x1="3" y1="0" x2="29" y2="0" gradientUnits="userSpaceOnUse"><stop stop-color="#22d3ee"/><stop offset="1" stop-color="#4ade80"/></linearGradient>
+              <linearGradient id="g2" x1="3" y1="0" x2="29" y2="0" gradientUnits="userSpaceOnUse"><stop stop-color="#4ade80"/><stop offset="1" stop-color="#fbbf24"/></linearGradient>
+              <linearGradient id="g3" x1="3" y1="0" x2="29" y2="0" gradientUnits="userSpaceOnUse"><stop stop-color="#fb7185"/><stop offset="1" stop-color="#60a5fa"/></linearGradient>
+            </defs>
+          </svg>
+          <h1>StreamLab</h1>
+        </div>
+        <div class="tagline">Java Stream API &mdash; watch it run <b>sequential</b> or across <b>parallel threads</b>.</div>
+      </div>
+      <div class="headright">
+        <button class="themebtn" id="theme" aria-label="Toggle color theme">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg>
+          <span>Theme</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="code" id="code" aria-label="pipeline source"></div>
+
+    <section class="stage">
+      <div class="canvas-wrap">
+        <canvas id="c" aria-label="Animated Java stream pipeline showing the source list flowing through filter, map, limit and collect, sequentially or across parallel threads."></canvas>
+      </div>
+
+      <aside class="rail">
+        <div class="card">
+          <h3>Live run</h3>
+          <div class="metrics">
+            <div class="metric read"><span class="n" id="m-read">0</span><span class="l">elements read</span></div>
+            <div class="metric coll"><span class="n" id="m-coll">0</span><span class="l">collected</span></div>
+            <div class="metric pull"><span class="n" id="m-map">0</span><span class="l">mapped</span></div>
+            <div class="metric skip"><span class="n" id="m-skip">12</span><span class="l">never evaluated</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Wall-clock <span class="tag">modeled</span></h3>
+          <div class="wallmain">
+            <div class="walltime"><span class="wall-n" id="wall">0</span><span class="wall-u">ms</span></div>
+            <span class="speed-pill neutral" id="speed-pill">baseline</span>
+          </div>
+          <div class="wallbars" id="wallbars" data-mode="seq">
+            <div class="wb"><span class="wb-l">this run</span><div class="wb-track"><div class="wb-fill this" id="bar-this"></div></div><span class="wb-v" id="bar-this-v">0 ms</span></div>
+            <div class="wb base"><span class="wb-l">1 thread</span><div class="wb-track"><div class="wb-fill base" id="bar-base"></div></div><span class="wb-v" id="bar-base-v">0 ms</span></div>
+          </div>
+          <div class="wallsub" id="wallsub"></div>
+        </div>
+        <div class="card">
+          <h3>Output &mdash; toList()</h3>
+          <div class="output" id="output"><span class="out-empty">waiting for a terminal pull&hellip;</span></div>
+        </div>
+        <div class="card">
+          <h3 id="ins-title">Why it stays lazy</h3>
+          <div class="insight" id="ins-1">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="var(--map)" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+            <div><div class="t" id="ins-1-t"></div><div class="d" id="ins-1-d"></div></div>
+          </div>
+          <div class="insight" id="ins-2">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="var(--map)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+            <div><div class="t" id="ins-2-t"></div><div class="d" id="ins-2-d"></div></div>
+          </div>
+          <div class="insight" id="ins-3">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="var(--map)" stroke-width="2" stroke-linecap="round"><path d="M13 2L4.5 13H11l-1 9 8.5-11H12z"/></svg>
+            <div><div class="t" id="ins-3-t"></div><div class="d" id="ins-3-d"></div></div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <div class="controls">
+      <button class="btn primary" id="play"><svg id="play-ic" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg><span id="play-l">Pause</span></button>
+      <button class="btn" id="step"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5v14l9-7zM16 5h2.5v14H16z"/></svg>Step</button>
+      <button class="btn" id="reset"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 4v6h6"/><path d="M4 10a8 8 0 1 1-1.5 4.5"/></svg>Replay</button>
+      <div class="sep"></div>
+      <div class="grp">
+        <span class="lab">threads</span>
+        <div class="seg" id="threads" role="group" aria-label="Thread count">
+          <button data-t="1" aria-pressed="true">1</button>
+          <button data-t="2">2</button>
+          <button data-t="3">3</button>
+          <button data-t="4">4</button>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div class="grp">
+        <span class="lab">speed</span>
+        <div class="seg" role="group" aria-label="Playback speed">
+          <button data-sp="0.5">0.5&times;</button>
+          <button data-sp="1" aria-pressed="true">1&times;</button>
+          <button data-sp="1.75">1.75&times;</button>
+        </div>
+      </div>
+      <div class="stepper">
+        <span class="lab">limit(n)</span>
+        <button class="rnd" id="dec" aria-label="Decrease limit">&minus;</button>
+        <span class="val" id="limit-val">3</span>
+        <button class="rnd" id="inc" aria-label="Increase limit">+</button>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <div class="tl-head">
+        <h3>Pipeline timeline &mdash; each dot is one element crossing a stage</h3>
+        <span class="hint" id="tl-hint"></span>
+      </div>
+      <div class="lanes" id="lanes"></div>
+    </div>
+
+    <div class="tip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.7.7-1 1.2-1 2.5H9c0-1.3-.3-1.8-1-2.5A6 6 0 0 1 12 3z"/></svg>
+      <div id="tip-text"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const HUE = { source:"#22d3ee", filter:"#4ade80", map:"#fbbf24", limit:"#fb7185", collect:"#60a5fa" };
+  const GATE = { filter:HUE.filter, map:HUE.map, limit:HUE.limit, collect:HUE.collect };
+  const THREAD_HUE = ["#22d3ee","#fb923c","#a78bfa","#f472b6"];
+  const COLS = ["filter","map","limit","collect"];
+
+  const SOURCE = [1,2,3,4,5,6,7,8,9,10,11,12];
+  const pred = x => x % 2 === 0;
+  const mapf = x => x * x;
+  const D = { travel:600, morph:340, drop:440, reject:420, gap:200 };
+
+  // ---------- modeled wall-clock ----------
+  const W_PER = 6;                                   // modeled ms of work per element evaluated
+  const mergeOverhead = T => T<=1 ? 0 : 8 + 3*(T-1); // coordination cost grows with threads
+  const seqReadCount = limit => limit>=6 ? 12 : 2*Math.max(1,limit); // evens sit at even positions
+  function attachTimes(r, limit, T){
+    const baselineWall = seqReadCount(limit) * W_PER;   // 1-thread wall for the same pipeline
+    if(r.mode==="seq"){
+      r.wall = baselineWall; r.cpu = baselineWall;
+      let m=0; r.threads[0].legs.forEach(l=>m=Math.max(m,l.start+l.dur)); r.wallEndSim=m;
+    } else {
+      const mo = mergeOverhead(T);
+      r.wall = Math.max(...r.sizes)*W_PER + mo;          // slowest thread + merge
+      r.cpu  = SOURCE.length*W_PER + mo;                 // total work across all threads
+      r.wallEndSim = r.trimT;
+    }
+    r.baselineWall = baselineWall;
+    r.speedup = baselineWall / r.wall;
+  }
+
+  // ---------- run construction ----------
+  function splitContig(n, T){
+    const base=Math.floor(n/T), rem=n%T, sizes=[];
+    for(let i=0;i<T;i++) sizes.push(base + (i<rem?1:0));
+    return sizes;
+  }
+
+  // one element's journey; returns {legs, events, endT, passed, mapped}
+  function elementLegs(tid, v, srcIdx, t0, toKeyAfterMap){
+    const legs=[], events=[]; let t=t0;
+    events.push({t, kind:"read", val:v, thread:tid, srcIdx});
+    legs.push({kind:"enter", thread:tid, srcIdx, val:v, start:t, dur:D.travel});
+    t+=D.travel;
+    if(!pred(v)){
+      events.push({t, kind:"drop", val:v, thread:tid, srcIdx});
+      legs.push({kind:"reject", thread:tid, srcIdx, val:v, start:t, dur:D.reject});
+      t+=D.reject+D.gap;
+      return {legs, events, endT:t, passed:false};
+    }
+    events.push({t, kind:"pass", val:v, thread:tid, srcIdx});
+    legs.push({kind:"travel", thread:tid, srcIdx, fromKey:"filter", toKey:"map", val:v, start:t, dur:D.travel});
+    t+=D.travel;
+    const mv=mapf(v);
+    events.push({t, kind:"map", val:v, mapped:mv, thread:tid, srcIdx});
+    legs.push({kind:"morph", thread:tid, srcIdx, atKey:"map", val:v, val2:mv, start:t, dur:D.morph});
+    t+=D.morph;
+    legs.push({kind:"travel", thread:tid, srcIdx, fromKey:"map", toKey:"limit", val:mv, start:t, dur:D.travel});
+    t+=D.travel;
+    // through limit, on to collect
+    legs.push({kind:"travel", thread:tid, srcIdx, fromKey:"limit", toKey:"collect", val:mv, start:t, dur:D.travel});
+    t+=D.travel;
+    legs.push({kind:"land", thread:tid, srcIdx, atKey:"collect", val:mv, start:t, dur:D.drop});
+    events.push({t, kind:"land", val:v, mapped:mv, thread:tid, srcIdx});
+    t+=D.drop+D.gap;
+    return {legs, events, endT:t, passed:true, mapped:mv};
+  }
+
+  function buildSeq(limit){
+    const threads=[{tid:0, legs:[], hue:null}];
+    let events=[], t=0, taken=0, reads=0, output=[];
+    for(let idx=0; idx<SOURCE.length; idx++){
+      if(taken>=limit) break;                     // short-circuit: never read further
+      reads++;
+      const v=SOURCE[idx];
+      const r=elementLegs(0, v, idx, t);
+      threads[0].legs.push(...r.legs);
+      // splice a "take" event just before land for passed elements
+      if(r.passed){
+        taken++; output.push(r.mapped);
+        const landEv=r.events.find(e=>e.kind==="land");
+        events.push({t:landEv.t-1, kind:"take", val:v, thread:0, srcIdx:idx, taken});
+        // annotate land with encounter output snapshot
+        landEv.output = output.slice();
+      }
+      events.push(...r.events);
+      t=r.endT;
+    }
+    const neverRead=SOURCE.length-reads;
+    const endT=t+120;
+    events.push({t:endT, kind:"end"});
+    events.sort((a,b)=>a.t-b.t);
+    return { mode:"seq", T:1, limit, threads, events, total:endT+360,
+             neverRead, shortCircuited: neverRead>0, output, keptSet:null };
+  }
+
+  function buildPar(limit, T){
+    const sizes=splitContig(SOURCE.length, T);
+    const threads=[]; let events=[]; let start=0; let maxEnd=0;
+    for(let ti=0; ti<T; ti++){
+      const size=sizes[ti];
+      const chunk=[]; for(let k=0;k<size;k++) chunk.push(start+k);
+      const th={tid:ti, hue:THREAD_HUE[ti], legs:[], chunk};
+      let t=0;
+      for(const idx of chunk){
+        const v=SOURCE[idx];
+        const r=elementLegs(ti, v, idx, t);
+        th.legs.push(...r.legs);
+        events.push(...r.events);
+        t=r.endT;
+      }
+      th.endT=t; maxEnd=Math.max(maxEnd,t);
+      threads.push(th); start+=size;
+    }
+    // merge / limit: encounter order = by srcIdx; keep first n
+    const landed=events.filter(e=>e.kind==="land").sort((a,b)=>a.srcIdx-b.srcIdx);
+    const keptSet=new Set(landed.slice(0,limit).map(e=>e.srcIdx));
+    const output=landed.slice(0,limit).map(e=>e.mapped);
+    const trimT=maxEnd+180;
+    events.push({t:trimT, kind:"trim"});
+    const endT=trimT+120;
+    events.push({t:endT, kind:"end"});
+    events.sort((a,b)=>a.t-b.t);
+    return { mode:"par", T, limit, threads, events, total:endT+360,
+             neverRead:0, shortCircuited:false, output, keptSet, trimT, sizes };
+  }
+
+  function buildRun(limit, T){
+    const r = T<=1 ? buildSeq(limit) : buildPar(limit, T);
+    attachTimes(r, limit, T);
+    return r;
+  }
+
+  // ---------- state ----------
+  let limit=3, threads=1;
+  let run=buildRun(limit, threads);
+  let now=0, running=!reduce, speed=1;
+
+  // ---------- canvas ----------
+  const canvas=document.getElementById("c"), ctx=canvas.getContext("2d");
+  let W=940, H=372, DPR=1;
+  const cssVar=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  let NEUT={};
+  function readNeutrals(){
+    NEUT={ ink:cssVar("--ink"), muted:cssVar("--muted"), faint:cssVar("--faint"),
+           panel:cssVar("--panel"), panel2:cssVar("--panel-2"), line:cssVar("--line"),
+           glow:parseFloat(cssVar("--glow"))||.4 };
+  }
+  function resize(){
+    const wrap=canvas.parentElement;
+    W=Math.max(760, Math.round(wrap.clientWidth)); H=372;
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    canvas.style.width=W+"px"; canvas.style.height=H+"px";
+    canvas.width=Math.round(W*DPR); canvas.height=Math.round(H*DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+
+  // layout
+  const PADX=70;
+  const TRAY_TOP=44, TRAY_H=30, TRAY_CY=TRAY_TOP+TRAY_H/2;
+  const GEO_TOP=118, COL_BOTTOM=304, LANE_CENTER=(GEO_TOP+COL_BOTTOM)/2;
+  const innerW=()=>W-2*PADX;
+  const colFrac={filter:0.13, map:0.39, limit:0.65, collect:0.905};
+  const colX=k=>PADX+innerW()*colFrac[k];
+  const cellW=()=>innerW()/SOURCE.length;
+  const cellX=i=>PADX+(i+0.5)*cellW();
+  function laneY(tid){
+    if(run.mode==="seq") return LANE_CENTER;
+    const T=run.T, gap=Math.min(42, 150/T);
+    return LANE_CENTER + (tid-(T-1)/2)*gap;
+  }
+  const easeInOut=p=>p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+  const easeIn=p=>p*p;
+  const lerp=(a,b,p)=>a+(b-a)*p;
+  const mix=(hex,a)=>{ const n=parseInt(hex.slice(1),16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; };
+  const textOn=hex=>{ const n=parseInt(hex.slice(1),16); const L=0.299*(n>>16&255)+0.587*(n>>8&255)+0.114*(n&255); return L>145?"#0b0f1a":"#ffffff"; };
+
+  function rrect(x,y,w,h,r){
+    if(ctx.roundRect){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); return; }
+    ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+  }
+
+  // ---------- stats ----------
+  function statsAt(t){
+    let reads=0,pass=0,drop=0,mapped=0,taken=0,ended=false,trimmed=false;
+    let seqOutput=[]; const landed=[]; const readSet=new Set();
+    for(const e of run.events){
+      if(e.t>t) break;
+      if(e.kind==="read"){ reads++; readSet.add(e.srcIdx); }
+      else if(e.kind==="pass") pass++;
+      else if(e.kind==="drop") drop++;
+      else if(e.kind==="map") mapped++;
+      else if(e.kind==="take"){ taken=e.taken; if(e.output) seqOutput=e.output; }
+      else if(e.kind==="land"){ landed.push({mapped:e.mapped,srcIdx:e.srcIdx,thread:e.thread}); if(e.output) seqOutput=e.output; }
+      else if(e.kind==="trim") trimmed=true;
+      else if(e.kind==="end") ended=true;
+    }
+    return {reads,pass,drop,mapped,taken,ended,trimmed,seqOutput,landed,readSet};
+  }
+  function derive(s){
+    if(run.mode==="seq"){
+      return { collected:s.seqOutput.length, outVals:s.seqOutput.map((v,i)=>({v,kept:true,thread:null})),
+               neverRead:s.ended?run.neverRead:(SOURCE.length-s.reads), taken:s.taken };
+    }
+    const ordered=s.landed.slice().sort((a,b)=>a.srcIdx-b.srcIdx);
+    const keptCount=Math.min(ordered.length, run.limit);
+    const keptIdx=new Set(ordered.slice(0,run.limit).map(x=>x.srcIdx));
+    const showTrim=s.trimmed;
+    return { collected:keptCount,
+             outVals:ordered.map(o=>({v:o.mapped, kept:keptIdx.has(o.srcIdx)||!showTrim, dim:showTrim&&!keptIdx.has(o.srcIdx), thread:o.thread})),
+             neverRead:s.ended?0:(SOURCE.length-s.reads), taken:keptCount };
+  }
+
+  // ---------- token positions ----------
+  function keyX(k){ return colX(k); }
+  function legPos(leg,p){
+    const ly=laneY(leg.thread);
+    if(leg.kind==="enter"){
+      const e=easeInOut(p);
+      return { x:lerp(cellX(leg.srcIdx), keyX("filter"), e), y:lerp(TRAY_CY, ly, e), val:leg.val, a:1, s:1 };
+    }
+    if(leg.kind==="reject"){
+      return { x:keyX("filter"), y:lerp(ly, COL_BOTTOM+34, easeIn(p)), val:leg.val, a:1-p, s:1-.25*p, rejected:true };
+    }
+    if(leg.kind==="travel"){
+      const e=easeInOut(p);
+      return { x:lerp(keyX(leg.fromKey), keyX(leg.toKey), e), y:ly, val:leg.val, a:1, s:1, toKey:leg.toKey };
+    }
+    if(leg.kind==="morph"){
+      return { x:keyX("map"), y:ly, val:p<.5?leg.val:leg.val2, a:1, s:1+.32*Math.sin(p*Math.PI), atKey:"map" };
+    }
+    if(leg.kind==="land"){
+      return { x:keyX("collect"), y:lerp(ly, COL_BOTTOM-26, easeIn(p)), val:leg.val, a:1-.4*p, s:1-.5*p, atKey:"collect" };
+    }
+  }
+  function seqHue(leg){
+    if(leg.kind==="enter") return HUE.filter;
+    if(leg.kind==="reject") return NEUT.faint;
+    if(leg.kind==="morph") return HUE.map;
+    if(leg.kind==="land") return HUE.collect;
+    if(leg.kind==="travel") return GATE[leg.toKey];
+    return HUE.collect;
+  }
+  function activeTokens(t){
+    const out=[];
+    for(const th of run.threads){
+      for(const leg of th.legs){
+        if(t<leg.start || t>=leg.start+leg.dur) continue;
+        const p=(t-leg.start)/leg.dur;
+        const pos=legPos(leg,p);
+        pos.hue = run.mode==="par" ? th.hue : seqHue(leg);
+        out.push(pos);
+        break; // one active token per thread
+      }
+    }
+    return out;
+  }
+
+  // ---------- drawing ----------
+  function drawTray(s){
+    const y=TRAY_TOP, h=TRAY_H;
+    ctx.textAlign="left"; ctx.fillStyle=NEUT.faint; ctx.font=`600 10px ${cssVar("--font-mono")}`;
+    ctx.fillText("SOURCE · List.of(1..12)", PADX, y-10);
+    if(run.mode==="par"){
+      ctx.textAlign="right"; ctx.fillStyle=NEUT.muted;
+      ctx.fillText(`split across ${run.T} threads`, W-PADX, y-10);
+    }
+    ctx.textAlign="center";
+    // chunk backdrops in parallel
+    let cursor=0;
+    for(let i=0;i<SOURCE.length;i++){
+      const cw=cellW(), cx=cellX(i), read=s.readSet.has(i);
+      let hue=HUE.source, tid=0;
+      if(run.mode==="par"){
+        // which thread owns cell i
+        let acc=0; for(let ti=0;ti<run.T;ti++){ acc+=run.sizes[ti]; if(i<acc){ tid=ti; break; } }
+        hue=THREAD_HUE[tid];
+      }
+      const x=cx-cw/2+3, w=cw-6;
+      rrect(x,y,w,h,7);
+      ctx.fillStyle= read ? mix(hue,0.07) : mix(hue,0.16);
+      ctx.fill();
+      ctx.lineWidth=1; ctx.strokeStyle= read ? mix(hue,0.18) : mix(hue,0.55); ctx.stroke();
+      ctx.fillStyle= read ? NEUT.faint : (run.mode==="par"?hue:NEUT.ink);
+      ctx.font=`${read?"500":"700"} 13px ${cssVar("--font-disp")}`;
+      ctx.fillText(String(SOURCE[i]), cx, y+h/2+4.5);
+    }
+    // never-read highlight at end
+    if(s.ended && run.mode==="seq" && run.neverRead>0){
+      const first=SOURCE.length-run.neverRead;
+      const x0=cellX(first)-cellW()/2+2, x1=cellX(SOURCE.length-1)+cellW()/2-2;
+      ctx.strokeStyle=HUE.limit; ctx.lineWidth=1.6; ctx.setLineDash([4,3]);
+      rrect(x0,y-3,x1-x0,h+6,9); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle=HUE.limit; ctx.font=`600 10px ${cssVar("--font-mono")}`; ctx.textAlign="center";
+      ctx.fillText("never read — short-circuited by limit", (x0+x1)/2, y+h+15);
+    }
+  }
+
+  function drawColumn(k, s, drv){
+    const x=colX(k), hue=GATE[k], top=GEO_TOP, h=COL_BOTTOM-GEO_TOP, w=88, bx=x-w/2;
+    ctx.save();
+    ctx.shadowColor=mix(hue,NEUT.glow*.4); ctx.shadowBlur=16;
+    rrect(bx,top,w,h,13); ctx.fillStyle=NEUT.panel; ctx.fill();
+    ctx.restore();
+    rrect(bx,top,w,h,13); ctx.lineWidth=1; ctx.strokeStyle=mix(hue,.28); ctx.stroke();
+    ctx.save(); rrect(bx+1,top+1,w-2,4,2); ctx.fillStyle=hue; ctx.shadowColor=hue; ctx.shadowBlur=9; ctx.fill(); ctx.restore();
+
+    ctx.textAlign="center";
+    ctx.fillStyle=hue; ctx.font=`600 14px ${cssVar("--font-mono")}`;
+    ctx.fillText(k, x, top+26);
+    ctx.fillStyle=NEUT.muted; ctx.font=`10.5px ${cssVar("--font-mono")}`;
+    const sub={filter:"x % 2 == 0", map:"x -> x*x", limit:run.mode==="par"?`merge · ${run.limit}`:String(run.limit), collect:"toList()"}[k];
+    ctx.fillText(sub, x, top+42);
+
+    // per-thread lane guides in parallel
+    if(run.mode==="par"){
+      for(const th of run.threads){
+        const ly=laneY(th.tid);
+        ctx.strokeStyle=mix(th.hue,.16); ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(bx+6,ly); ctx.lineTo(bx+w-6,ly); ctx.stroke();
+      }
+    }
+
+    // counters
+    const cy=COL_BOTTOM+18;
+    ctx.font=`700 15px ${cssVar("--font-disp")}`;
+    if(k==="filter"){
+      ctx.fillStyle=hue; ctx.fillText(String(s.pass), x-16, cy);
+      ctx.fillStyle=NEUT.faint; ctx.fillText(String(s.drop), x+16, cy);
+      ctx.font=`10px ${cssVar("--font-mono")}`;
+      ctx.fillStyle=NEUT.muted; ctx.fillText("pass", x-16, cy+14);
+      ctx.fillStyle=NEUT.faint; ctx.fillText("drop", x+16, cy+14);
+    } else if(k==="map"){
+      ctx.fillStyle=hue; ctx.fillText(String(s.mapped), x, cy);
+      ctx.font=`10px ${cssVar("--font-mono")}`; ctx.fillStyle=NEUT.muted; ctx.fillText("mapped", x, cy+14);
+    } else if(k==="limit"){
+      ctx.fillStyle=hue;
+      ctx.fillText(run.mode==="par" ? `${drv.collected}/${run.limit}` : `${s.taken}/${run.limit}`, x, cy);
+      ctx.font=`10px ${cssVar("--font-mono")}`; ctx.fillStyle=NEUT.muted;
+      ctx.fillText(run.mode==="par"?"kept in order":(s.taken>=run.limit?"full — stop":"taken"), x, cy+14);
+    } else {
+      const str=`[${drv.outVals.filter(o=>o.kept&&!o.dim).map(o=>o.v).join(", ")}]`;
+      let fs=12; ctx.font=`600 ${fs}px ${cssVar("--font-mono")}`;
+      while(ctx.measureText(str).width>w+34 && fs>8){ fs--; ctx.font=`600 ${fs}px ${cssVar("--font-mono")}`; }
+      ctx.fillStyle=hue; ctx.fillText(str, x, cy);
+      ctx.font=`10px ${cssVar("--font-mono")}`; ctx.fillStyle=NEUT.muted;
+      ctx.fillText(`${drv.collected} collected`, x, cy+14);
+    }
+  }
+
+  function drawToken(tok){
+    ctx.save(); ctx.globalAlpha=tok.a;
+    const r=11*tok.s;
+    ctx.shadowColor=tok.hue; ctx.shadowBlur=20;
+    ctx.beginPath(); ctx.arc(tok.x,tok.y,r,0,7); ctx.fillStyle=tok.hue; ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.fillStyle=textOn(tok.hue); ctx.font=`700 ${Math.round(11*tok.s)}px ${cssVar("--font-disp")}`;
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(String(tok.val), tok.x, tok.y+.5);
+    ctx.textBaseline="alphabetic";
+    ctx.restore();
+  }
+
+  function draw(){
+    const s=statsAt(now), drv=derive(s);
+    ctx.clearRect(0,0,W,H);
+
+    // section labels
+    ctx.textAlign="center"; ctx.fillStyle=NEUT.faint; ctx.font=`600 10px ${cssVar("--font-mono")}`;
+    ctx.fillText("INTERMEDIATE OPS", (colX("filter")+colX("limit"))/2, GEO_TOP-12);
+    ctx.fillText("TERMINAL", colX("collect"), GEO_TOP-12);
+
+    drawTray(s);
+
+    // conduit(s): tray region down into lanes then across
+    for(const th of run.threads){
+      const ly=laneY(th.tid);
+      const hue = run.mode==="par" ? th.hue : HUE.map;
+      const grad=ctx.createLinearGradient(colX("filter"),0,colX("collect"),0);
+      if(run.mode==="par"){ grad.addColorStop(0,mix(hue,.5)); grad.addColorStop(1,mix(hue,.5)); }
+      else { grad.addColorStop(0,HUE.filter); grad.addColorStop(.4,HUE.map); grad.addColorStop(.72,HUE.limit); grad.addColorStop(1,HUE.collect); }
+      ctx.save(); ctx.shadowColor=mix(hue,NEUT.glow*.5); ctx.shadowBlur=12;
+      ctx.strokeStyle=grad; ctx.lineWidth=run.mode==="par"?2:3; ctx.lineCap="round";
+      ctx.beginPath(); ctx.moveTo(colX("filter"),ly); ctx.lineTo(colX("collect"),ly); ctx.stroke();
+      ctx.restore();
+    }
+
+    COLS.forEach(k=>drawColumn(k,s,drv));
+
+    // short-circuit / parallel banner
+    if(s.ended){
+      ctx.textAlign="center"; ctx.font=`600 11px ${cssVar("--font-mono")}`;
+      if(run.mode==="seq" && run.shortCircuited){
+        ctx.fillStyle=HUE.limit;
+        ctx.fillText(`⚡ short-circuited · ${run.neverRead} elements never evaluated`, W/2, H-12);
+      } else if(run.mode==="par"){
+        ctx.fillStyle=HUE.limit;
+        ctx.fillText(`all ${SOURCE.length} elements evaluated across ${run.T} threads — parallel limit() can't short-circuit`, W/2, H-12);
+      }
+    }
+
+    activeTokens(now).forEach(drawToken);
+    ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+    updateWall();
+  }
+
+  // ---------- DOM sync ----------
+  const el=id=>document.getElementById(id);
+  let lastSig="";
+  function syncDom(){
+    const s=statsAt(now), drv=derive(s);
+    const sig=[run.mode,run.T,run.limit,s.reads,s.pass,s.drop,s.mapped,drv.collected,s.trimmed,s.ended,drv.outVals.map(o=>o.v+(o.dim?"x":"")).join(",")].join("|");
+    if(sig===lastSig) return; lastSig=sig;
+    el("m-read").textContent=s.reads;
+    el("m-coll").textContent=drv.collected;
+    el("m-map").textContent=s.mapped;
+    el("m-skip").textContent=drv.neverRead;
+    const out=el("output");
+    if(drv.outVals.length===0){ out.innerHTML='<span class="out-empty">waiting for a terminal pull&hellip;</span>'; }
+    else{
+      out.innerHTML="";
+      drv.outVals.forEach(o=>{
+        const c=document.createElement("span"); c.className="chip"+(o.dim?" trim":"");
+        c.textContent=o.v;
+        const hue = run.mode==="par" ? THREAD_HUE[o.thread] : HUE.collect;
+        c.style.setProperty("--chH", hue);
+        out.appendChild(c);
+      });
+    }
+    el("ins-3").classList.toggle("on", s.ended && (run.shortCircuited || run.mode==="par"));
+    el("ins-2").classList.toggle("on", !s.ended && s.reads>0);
+    el("tl-hint").textContent = s.ended
+      ? (run.mode==="par"
+          ? `${s.reads} read · ${drv.collected} kept · 0 skipped`
+          : `${s.reads} read · ${drv.collected} collected · ${run.neverRead} skipped`)
+      : "running…";
+  }
+
+  // ---------- timeline ----------
+  const LANES=["source","filter","map","limit","collect"];
+  const LANEHUE={source:HUE.source,filter:HUE.filter,map:HUE.map,limit:HUE.limit,collect:HUE.collect};
+  let dotEls=[], playhead=null;
+  function buildTimeline(){
+    const lanes=el("lanes"); lanes.innerHTML=""; dotEls=[];
+    playhead=document.createElement("div"); playhead.className="playhead"; lanes.appendChild(playhead);
+    const tracks={};
+    LANES.forEach(name=>{
+      const row=document.createElement("div"); row.className="lane";
+      const nm=document.createElement("div"); nm.className="name"; nm.textContent=name;
+      const tr=document.createElement("div"); tr.className="track"; tr.style.background=mix(LANEHUE[name],.10);
+      row.appendChild(nm); row.appendChild(tr); lanes.appendChild(row); tracks[name]=tr;
+    });
+    const place=(name,e,hollow)=>{
+      const hue = run.mode==="par" && e.thread!=null ? THREAD_HUE[e.thread] : LANEHUE[name];
+      const d=document.createElement("div"); d.className="dot"+(hollow?" hollow":"");
+      d.style.left=(e.t/run.total*100)+"%";
+      if(hollow){ d.style.borderColor=hue; } else { d.style.background=hue; d.style.borderColor=hue; }
+      d.style.boxShadow=`0 0 8px ${mix(hue,.7)}`;
+      tracks[name].appendChild(d); dotEls.push({el:d,t:e.t});
+    };
+    run.events.forEach(e=>{
+      if(e.kind==="read") place("source",e,false);
+      else if(e.kind==="pass") place("filter",e,false);
+      else if(e.kind==="drop") place("filter",e,true);
+      else if(e.kind==="map") place("map",e,false);
+      else if(e.kind==="take") place("limit",e,false);
+      else if(e.kind==="land") place("collect",e,false);
+    });
+    syncTimeline();
+  }
+  function syncTimeline(){
+    for(const d of dotEls) d.el.classList.toggle("on", now>=d.t);
+    if(playhead) playhead.style.left=Math.min(100, now/run.total*100)+"%";
+  }
+
+  // ---------- code line + insights + tip ----------
+  function renderCode(){
+    const src = run.mode==="par"
+      ? `<span class="k">.</span><span class="par">parallelStream</span>()`
+      : `<span class="k">.stream</span>()`;
+    el("code").innerHTML =
+      `<span class="k">List</span>.<span class="op op-src">of</span>(<span class="dim">1..12</span>)${src} `+
+      `<span class="op op-filter">.filter</span>(x <span class="dim">-&gt;</span> x % 2 == 0) `+
+      `<span class="op op-map">.map</span>(x <span class="dim">-&gt;</span> x * x) `+
+      `<span class="op op-limit">.limit</span>(${limit}) `+
+      `<span class="op op-collect">.collect</span>(<span class="k">toList</span>())`;
+  }
+  function updateInsights(){
+    el("ins-title").textContent = run.mode==="par" ? "How parallel works" : "Why it stays lazy";
+    if(run.mode==="par"){
+      el("ins-1-t").textContent="Split &amp; conquer";
+      el("ins-1-d").innerHTML=`The source is split into <b>${run.T} chunks</b>, one per thread from the ForkJoin pool.`;
+      el("ins-2-t").textContent="One per thread";
+      el("ins-2-d").innerHTML=`Each thread pulls its chunk through its own copy of the pipeline &mdash; concurrently, not one array per stage.`;
+      el("ins-3-t").textContent="limit() isn't free here";
+      el("ins-3-d").innerHTML=`To keep encounter order, results merge at the end &mdash; so <b>every chunk is fully evaluated</b>. No short-circuit.`;
+    } else {
+      el("ins-1-t").textContent="Pull, not push";
+      el("ins-1-d").innerHTML=`<b>collect()</b> asks upstream for the next value &mdash; nothing moves until it does.`;
+      el("ins-2-t").textContent="One at a time";
+      el("ins-2-d").innerHTML=`A single element travels the whole pipeline before the next is fetched &mdash; not one array per stage.`;
+      el("ins-3-t").textContent="Short-circuit";
+      el("ins-3-d").innerHTML=`<b>limit(n)</b> stops the source the instant it has enough. Later elements are never read.`;
+    }
+  }
+  function renderTip(){
+    el("tip-text").innerHTML = run.mode==="par"
+      ? `Watch the <b>wall-clock</b>: with <code>limit(${limit})</code>, 1 thread short-circuits early &mdash; so a couple of threads can be <b>slower</b> (same work, split worse, plus merge cost). Raise the limit past 6 (no short-circuit) and parallel pulls clearly ahead.`
+      : `Nudge <code>limit(n)</code> or add <b>threads</b> and watch the run change. With one thread, elements <b>7&ndash;12 are never touched</b>; go parallel and the whole source drains.`;
+  }
+  function renderWall(){
+    const max=Math.max(run.wall, run.baselineWall, 1);
+    el("wallbars").dataset.mode=run.mode;
+    el("bar-base").style.width=(run.baselineWall/max*100)+"%";
+    el("bar-base-v").textContent=run.baselineWall+" ms";
+    el("bar-this-v").textContent=run.wall+" ms";
+    const pill=el("speed-pill");
+    if(run.mode==="seq"){ pill.textContent="1 thread · baseline"; pill.className="speed-pill neutral"; }
+    else{
+      const s=run.speedup;
+      pill.textContent = s>=1.005 ? `${s.toFixed(2)}× faster` : (s<=0.995 ? `${s.toFixed(2)}× — slower!` : "≈ break-even");
+      pill.className="speed-pill "+(s>=1.05?"good":(s<0.99?"warn":"neutral"));
+    }
+    el("wallsub").innerHTML=`CPU <b>${run.cpu} ms</b> total work · ${run.T} thread${run.T>1?"s":""}`;
+  }
+  function updateWall(){
+    const prog=run.wallEndSim ? Math.min(1, now/run.wallEndSim) : 1;
+    el("wall").textContent=Math.round(run.wall*prog);
+    const max=Math.max(run.wall, run.baselineWall, 1);
+    el("bar-this").style.width=(run.wall/max*100*prog)+"%";
+  }
+
+  // ---------- loop ----------
+  let prev=null;
+  function frame(ts){
+    if(prev==null) prev=ts;
+    const dt=ts-prev; prev=ts;
+    if(running){
+      now+=dt*speed;
+      if(now>=run.total){
+        now=run.total; running=false; updatePlayBtn();
+        if(!reduce) setTimeout(()=>{ if(!running){ now=0; running=true; prev=null; updatePlayBtn(); requestAnimationFrame(frame);} },1700);
+      }
+    }
+    draw(); syncDom(); syncTimeline();
+    if(running) requestAnimationFrame(frame);
+  }
+  function kick(){ prev=null; requestAnimationFrame(frame); }
+
+  // ---------- controls ----------
+  function updatePlayBtn(){
+    el("play-l").textContent=running?"Pause":(now>=run.total?"Replay":"Play");
+    el("play-ic").innerHTML=running?'<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>':'<path d="M8 5v14l11-7z"/>';
+  }
+  function rebuild(replay){
+    run=buildRun(limit, threads);
+    now=0; lastSig="";
+    renderCode(); updateInsights(); renderTip(); renderWall(); buildTimeline();
+    if(!reduce && replay!==false) running=true;
+    updatePlayBtn(); draw(); syncDom(); kick();
+  }
+  el("play").onclick=()=>{ if(now>=run.total) now=0; running=!running; updatePlayBtn(); if(running) kick(); };
+  el("step").onclick=()=>{
+    running=false; updatePlayBtn();
+    const next=run.events.find(e=>e.t>now+1);
+    now=next?next.t:run.total; draw(); syncDom(); syncTimeline();
+  };
+  el("reset").onclick=()=>{ now=0; running=true; updatePlayBtn(); kick(); };
+  document.querySelectorAll(".seg[aria-label='Playback speed'] button").forEach(b=>{
+    b.onclick=()=>{ speed=parseFloat(b.dataset.sp);
+      document.querySelectorAll(".seg[aria-label='Playback speed'] button").forEach(x=>x.setAttribute("aria-pressed",x===b)); };
+  });
+  document.querySelectorAll("#threads button").forEach(b=>{
+    b.onclick=()=>{ threads=+b.dataset.t;
+      document.querySelectorAll("#threads button").forEach(x=>x.setAttribute("aria-pressed",x===b));
+      rebuild(); };
+  });
+  function setLimit(n){
+    limit=Math.max(1,Math.min(9,n));
+    el("limit-val").textContent=limit;
+    el("dec").disabled=limit<=1; el("inc").disabled=limit>=9;
+    rebuild();
+  }
+  el("dec").onclick=()=>setLimit(limit-1);
+  el("inc").onclick=()=>setLimit(limit+1);
+
+  el("theme").onclick=()=>{
+    const cur=document.documentElement.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+    document.documentElement.setAttribute("data-theme", cur==="dark"?"light":"dark");
+    readNeutrals(); draw();
+  };
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{ readNeutrals(); draw(); });
+
+  // ---------- init ----------
+  function boot(){
+    readNeutrals(); resize();
+    renderCode(); updateInsights(); renderTip(); renderWall(); buildTimeline(); updatePlayBtn();
+    draw(); syncDom(); syncTimeline();
+    if(running) kick();
+  }
+  let rz;
+  window.addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=>{ resize(); draw(); },120); });
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>{ resize(); draw(); });
+  boot();
+})();
+</script>
