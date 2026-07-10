@@ -1,0 +1,123 @@
+[
+  {
+    "kind": "fork",
+    "lanes": 2,
+    "op": "fork",
+    "splitTree": {
+      "children": [
+        {
+          "estimatedSize": 5,
+          "lane": "L0"
+        },
+        {
+          "estimatedSize": 6,
+          "lane": "L1"
+        }
+      ],
+      "estimatedSize": 11,
+      "lane": "L0-L1"
+    },
+    "tick": 0
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L0",
+    "nextStage": "source",
+    "op": "find",
+    "tick": 1
+  },
+  {
+    "elementId": 1,
+    "input": {
+      "region": "West",
+      "total": 80
+    },
+    "kind": "emit",
+    "lane": "L0",
+    "op": "source",
+    "tick": 2
+  },
+  {
+    "elementId": 1,
+    "input": {
+      "region": "West",
+      "total": 80
+    },
+    "kind": "test",
+    "lane": "L0",
+    "op": "filter",
+    "output": false,
+    "predicate": "o.total > 100",
+    "tick": 3
+  },
+  {
+    "elementId": 1,
+    "kind": "die",
+    "lane": "L0",
+    "op": "filter",
+    "tick": 4
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L0",
+    "nextStage": "source",
+    "op": "find",
+    "tick": 5
+  },
+  {
+    "elementId": 2,
+    "input": {
+      "region": "West",
+      "total": 1200
+    },
+    "kind": "emit",
+    "lane": "L0",
+    "op": "source",
+    "tick": 6
+  },
+  {
+    "elementId": 2,
+    "input": {
+      "region": "West",
+      "total": 1200
+    },
+    "kind": "test",
+    "lane": "L0",
+    "op": "filter",
+    "output": true,
+    "predicate": "o.total > 100",
+    "tick": 7
+  },
+  {
+    "elementId": 2,
+    "kind": "survive",
+    "lane": "L0",
+    "nextStage": "map",
+    "op": "filter",
+    "tick": 8
+  },
+  {
+    "after": 1080,
+    "before": 1200,
+    "elementId": 2,
+    "kind": "transform",
+    "lane": "L0",
+    "nextStage": "collect",
+    "op": "map",
+    "tick": 9
+  },
+  {
+    "elementId": 2,
+    "kind": "found",
+    "lane": "L0",
+    "op": "find",
+    "tick": 10
+  },
+  {
+    "kind": "cancel",
+    "lane": "L1",
+    "op": "find",
+    "reason": "earlier encounter-order match won",
+    "tick": 11
+  }
+]
