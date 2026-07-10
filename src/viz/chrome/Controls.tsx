@@ -4,24 +4,33 @@ import { useAppStore } from "@/store/appStore";
 import styles from "./chrome.module.css";
 
 /**
- * Pipeline configuration controls (S2.4, spec §7): the **slice selector** (A
- * grouping ⇄ B short-circuit) and, in Slice B, the **`findFirst` ⇄ `findAny`
- * terminal toggle**. Each control calls the store's config action, which re-runs the
- * *real engine*, swaps in a fresh frozen log, and resets the playhead (R3 / S0.7) —
- * so a toggle genuinely rebuilds the pipeline and its trace, never a viz hack (AC1,
- * AC2). Sequentially `findFirst` and `findAny` produce identical playback (AC3); the
- * toggle is here so Slice B can still expose the distinction the parallel epics use.
+ * Pipeline configuration controls (S2.4 + S3.6, spec §7): the **slice selector** (A
+ * grouping ⇄ B short-circuit), the Slice-B **`findFirst` ⇄ `findAny` toggle**, and —
+ * as of S3.6 — the **mode** (sequential ⇄ multithread), the **2/4 thread selector**,
+ * and a **seed** control. Every control calls the store's config action, which
+ * re-runs the *real engine*, swaps in a fresh frozen log, and resets the playhead
+ * (R3 / S0.7) — so switching mode/threads/seed genuinely rebuilds the pipeline trace
+ * (a forked, seed-interleaved log for Slice A parallel), never a viz hack (AC1). The
+ * sequential path is untouched (AC2), and changing the seed re-interleaves the lanes
+ * (AC3) while the merged result stays invariant.
  *
- * Segmented native `<button>`s with `aria-pressed` reflecting the current selection,
- * grouped and labelled, so the controls are keyboard-drivable and screen-reader
- * legible (the DoD a11y bar). The terminal toggle appears only in Slice B, where it
- * has meaning.
+ * Segmented native `<button>`s with `aria-pressed`, grouped and labelled, so the
+ * controls are keyboard-drivable and screen-reader legible (the DoD a11y bar). The
+ * thread + seed controls appear only in multithread mode, where they have meaning.
  */
 export function Controls() {
   const slice = useAppStore((s) => s.config.slice);
   const terminal = useAppStore((s) => s.config.terminal);
+  const mode = useAppStore((s) => s.config.mode);
+  const threadCount = useAppStore((s) => s.config.threadCount);
+  const seed = useAppStore((s) => s.config.seed);
   const setSlice = useAppStore((s) => s.setSlice);
   const setTerminal = useAppStore((s) => s.setTerminal);
+  const setMode = useAppStore((s) => s.setMode);
+  const setThreads = useAppStore((s) => s.setThreads);
+  const setSeed = useAppStore((s) => s.setSeed);
+
+  const parallel = mode === "parallel";
 
   return (
     <div className={styles.controls} role="group" aria-label="Pipeline configuration">
@@ -61,6 +70,53 @@ export function Controls() {
             findAny
           </button>
         </div>
+      )}
+
+      <div className={styles.segmented} role="group" aria-label="Mode">
+        <span className={styles.segLabel}>Mode</span>
+        <button
+          className={!parallel ? styles.segOn : styles.segOff}
+          aria-pressed={!parallel}
+          onClick={() => setMode("sequential")}
+        >
+          sequential
+        </button>
+        <button
+          className={parallel ? styles.segOn : styles.segOff}
+          aria-pressed={parallel}
+          onClick={() => setMode("parallel")}
+        >
+          multithread
+        </button>
+      </div>
+
+      {parallel && (
+        <>
+          <div className={styles.segmented} role="group" aria-label="Threads">
+            <span className={styles.segLabel}>Threads</span>
+            <button
+              className={threadCount === 2 ? styles.segOn : styles.segOff}
+              aria-pressed={threadCount === 2}
+              onClick={() => setThreads(2)}
+            >
+              2
+            </button>
+            <button
+              className={threadCount === 4 ? styles.segOn : styles.segOff}
+              aria-pressed={threadCount === 4}
+              onClick={() => setThreads(4)}
+            >
+              4
+            </button>
+          </div>
+
+          <div className={styles.segmented} role="group" aria-label="Seed">
+            <span className={styles.segLabel}>Seed {seed}</span>
+            <button className={styles.segOff} onClick={() => setSeed(seed + 1)} aria-label="New seed">
+              ↻ reseed
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
