@@ -181,10 +181,12 @@ export function laneSpikeLoad(log: readonly EngineEvent[], playhead: number): Ma
 }
 
 /**
- * The caption for a parallel beat — the fork/merge narration the DOM shows (spec
- * §3.4). `fork` announces the split; `combine` the merge ("combiner merges partial
- * maps", S3.5); a lane spike reuses the sequential per-stage captions. Pure over the
- * log so the caption can never disagree with what is on screen.
+ * The caption for a parallel beat — the fork/merge/short-circuit narration the DOM
+ * shows (spec §3.4). `fork` announces the split; `combine` the merge ("combiner merges
+ * partial maps", S3.5); `found`/`cancel` narrate the Slice-B short-circuit (S4.3) —
+ * the ordered-vs-first-home contrast made legible; a lane spike reuses the sequential
+ * per-stage captions. Pure over the log so the caption can never disagree with what is
+ * on screen.
  */
 export function parallelCaptionFor(log: readonly EngineEvent[], playhead: number): string {
   if (log.length === 0) return "";
@@ -192,6 +194,19 @@ export function parallelCaptionFor(log: readonly EngineEvent[], playhead: number
   const current = log[index]!;
   if (current.kind === "fork") return `parallelStream forks into ${current.lanes} lanes`;
   if (current.kind === "combine") return "combiner merges partial maps";
+  if (current.kind === "found") {
+    // The terminal drives the caption's framing: findFirst is the *ordered*
+    // short-circuit (the earliest encounter-order match, reached only after the wait);
+    // findAny is *first lane home*. Which one is legible from the cancel reasons the
+    // engine already wrote (see parallelTerminalOf) — no viz-side re-derivation.
+    const terminal = parallelTerminalOf(log);
+    if (terminal === "findFirst") return "findFirst — ordered short-circuit: earliest match wins";
+    if (terminal === "findAny") return "findAny — first lane home wins";
+    return "FOUND — the terminal latches";
+  }
+  if (current.kind === "cancel") {
+    return `lane ${current.lane ?? ""} cancelled — ${current.reason}`.replace("  ", " ");
+  }
   const spike = activeLaneSpike(log, playhead);
   if (spike?.kind === "demand") return "lane pulls the next element";
   if (spike?.kind === "pulse") return LANE_PULSE_CAPTION[spike.forwardKind ?? "emit"] ?? "";
@@ -299,4 +314,82 @@ export function parallelBins(
   }
 
   return { perLane, merged, mergeProgress };
+}
+
+// ── S4.3: the lane race + cancellation wavefront ────────────────────────────
+//
+// Slice B parallel races the lanes to a short-circuit: one lane's match `found`
+// latches the winner, and a **dark cancellation wavefront** sweeps the lanes made
+// irrelevant (the engine's `cancel` events, S4.1/S4.2). Both are pure reads of the
+// log, so what the scene dims is *exactly* the engine's cancel set (AC1) and what
+// latches "FOUND" is *exactly* the engine's `found` (AC2) — never a viz guess. The
+// ordered-vs-first-home contrast (AC3) is inherent in the log the engine wrote: the
+// wavefront and latch simply replay it.
+
+/**
+ * Which short-circuit terminal produced this log, read from the `cancel` reasons the
+ * engine wrote (`findFirst` cancels name the *encounter-order* match; `findAny` names
+ * *another lane first*). Returns `null` for a log with no cancels — a run where no lane
+ * had to be made irrelevant (or a non-Slice-B log). Lets the caption frame the found
+ * beat as ordered short-circuit vs first-home without the viz re-deriving semantics.
+ */
+export function parallelTerminalOf(log: readonly EngineEvent[]): "findFirst" | "findAny" | null {
+  const cancel = log.find((e) => e.kind === "cancel");
+  if (cancel?.kind !== "cancel") return null;
+  return cancel.reason.includes("encounter-order") ? "findFirst" : "findAny";
+}
+
+/**
+ * The set of lane ids the cancellation wavefront has swept by the playhead — every
+ * lane whose `cancel` event sits at or before the current index. The set *grows* as
+ * the playhead advances (the wavefront sweeping), and by the end of the run equals
+ * exactly the engine's cancelled lanes (S4.3 AC1). A pure read of the log.
+ */
+export function cancelledLanes(log: readonly EngineEvent[], playhead: number): Set<string> {
+  const cancelled = new Set<string>();
+  if (log.length === 0) return cancelled;
+  const index = Math.floor(clamp(playhead, 0, log.length - 1));
+  for (let i = 0; i <= index; i += 1) {
+    const event = log[i]!;
+    if (event.kind === "cancel" && event.lane !== undefined) cancelled.add(event.lane);
+  }
+  return cancelled;
+}
+
+/**
+ * The winning lane's "FOUND" latch (S4.3) — the parallel echo of the sequential
+ * {@link FoundLatch}. Non-null once the playhead reaches the `found` event and stays
+ * latched thereafter. Carries the winner's `lane` (so the badge rides the right
+ * conduit) and the matched element's payload — region from its `emit`, total from its
+ * `map` (the discounted value it carried in) — read straight from the log, so what
+ * glows "FOUND" is always exactly `found.elementId` on `found.lane` (AC2).
+ */
+export interface ParallelFoundLatch {
+  readonly lane: string;
+  readonly elementId: number;
+  readonly region: Region;
+  readonly total: number;
+}
+
+export function parallelFoundLatch(
+  log: readonly EngineEvent[],
+  playhead: number,
+): ParallelFoundLatch | null {
+  if (log.length === 0) return null;
+  const index = Math.floor(clamp(playhead, 0, log.length - 1));
+  for (let i = 0; i <= index; i += 1) {
+    const event = log[i]!;
+    if (event.kind !== "found") continue;
+    const emit = log.find((e) => e.kind === "emit" && e.elementId === event.elementId);
+    if (emit?.kind !== "emit") return null;
+    const transform = log.find((e) => e.kind === "transform" && e.elementId === event.elementId);
+    const total = transform?.kind === "transform" ? transform.after : emit.input.total;
+    return {
+      lane: event.lane ?? emit.lane ?? "",
+      elementId: event.elementId,
+      region: emit.input.region,
+      total,
+    };
+  }
+  return null;
 }
