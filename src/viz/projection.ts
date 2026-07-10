@@ -89,6 +89,17 @@ export interface Pulse {
   readonly region: Region;
   /** The element's total the encoding sizes/labels off. Initial (pre-map) value; the morph is S1.8. */
   readonly total: number;
+  /** `[0,1]` visibility — 1 normally; fades to 0 as a rejected pulse dissipates (S1.7). */
+  readonly opacity: number;
+}
+
+/** The filter's live threshold readout while a pulse is at the filter (S1.7). */
+export interface FilterReadout {
+  readonly elementId: number;
+  /** The predicate with the live value substituted, e.g. `"1200 > 100"`. */
+  readonly text: string;
+  /** Whether the element passed — survivors glow, rejects dissipate. */
+  readonly passed: boolean;
 }
 
 /** The element's payload from its `emit` — region (fixed) and the pre-map total. */
@@ -112,10 +123,43 @@ function emitPayloadOf(
 export interface SceneState {
   readonly demandSpike: DemandSpike | null;
   readonly pulse: Pulse | null;
+  /** The filter's threshold readout, non-null while a pulse is being decided at the filter (S1.7). */
+  readonly filterReadout: FilterReadout | null;
 }
 
 /** The empty scene — nothing in flight (empty log, or a non-heartbeat event). */
-const EMPTY_SCENE: SceneState = Object.freeze({ demandSpike: null, pulse: null });
+const EMPTY_SCENE: SceneState = Object.freeze({
+  demandSpike: null,
+  pulse: null,
+  filterReadout: null,
+});
+
+/** How far below the conduit a rejected pulse sinks as it dissipates (spec §3.6). */
+const DIE_DEPTH = 3.2;
+
+/** The filter stages a pulse is "at the filter" for — where the readout shows and death happens. */
+const FILTER_STAGE_KINDS: ReadonlySet<EventKind> = new Set(["test", "survive", "die"]);
+
+/**
+ * The filter's live readout for the element a pulse currently embodies, if that
+ * pulse is at the filter (`test`/`survive`/`die`). Substitutes the element's total
+ * into its `test` predicate (`"o.total > 100"` → `"1200 > 100"`) and reports the
+ * boolean — so the neuron shows the real comparison the engine made (S1.7 AC1),
+ * never a re-derived one.
+ */
+function filterReadoutFor(log: readonly EngineEvent[], pulse: Pulse): FilterReadout | null {
+  if (!FILTER_STAGE_KINDS.has(pulse.kind)) return null;
+  for (const event of log) {
+    if (event.kind === "test" && event.elementId === pulse.elementId) {
+      return {
+        elementId: pulse.elementId,
+        text: event.predicate.replace(/o\.total/, String(event.input.total)),
+        passed: event.output,
+      };
+    }
+  }
+  return null;
+}
 
 /**
  * Project `(log, playhead)` to the scene's in-flight state. The playhead's integer
@@ -144,7 +188,11 @@ export function projectScene(log: readonly EngineEvent[], playhead: number): Sce
   if (current.kind === "demand") {
     const fromX = stageX("terminal");
     const toX = stageX("source");
-    return { demandSpike: { x: lerp(fromX, toX, frac), progress: frac }, pulse: null };
+    return {
+      demandSpike: { x: lerp(fromX, toX, frac), progress: frac },
+      pulse: null,
+      filterReadout: null,
+    };
   }
 
   // Forward element pulse: interpolate between this station and the next, but only
@@ -153,20 +201,27 @@ export function projectScene(log: readonly EngineEvent[], playhead: number): Sce
   if (fromX !== null && current.elementId !== undefined) {
     const payload = emitPayloadOf(log, current.elementId);
     if (payload) {
-      const nextX =
-        next && next.elementId === current.elementId ? forwardStationX(next.kind) : null;
-      const toX = nextX ?? fromX; // no continuation ⇒ hold in place (resting/fading)
-      return {
-        demandSpike: null,
-        pulse: {
-          elementId: current.elementId,
-          x: lerp(fromX, toX, frac),
-          y: 0,
-          kind: current.kind,
-          region: payload.region,
-          total: payload.total,
-        },
+      const base = {
+        elementId: current.elementId,
+        kind: current.kind,
+        region: payload.region,
+        total: payload.total,
       };
+
+      // A rejected pulse dies *at the filter* (spec §3.6): it never advances in x —
+      // it sinks into the void below the conduit and fades. This is what guarantees
+      // no pulse is ever rendered past the filter after a `die` (AC2).
+      const pulse: Pulse =
+        current.kind === "die"
+          ? { ...base, x: fromX, y: lerp(0, -DIE_DEPTH, frac), opacity: 1 - frac }
+          : (() => {
+              const nextX =
+                next && next.elementId === current.elementId ? forwardStationX(next.kind) : null;
+              const toX = nextX ?? fromX; // no continuation ⇒ hold in place
+              return { ...base, x: lerp(fromX, toX, frac), y: 0, opacity: 1 };
+            })();
+
+      return { demandSpike: null, pulse, filterReadout: filterReadoutFor(log, pulse) };
     }
   }
 
