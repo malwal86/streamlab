@@ -14,17 +14,17 @@ import styles from "./landing.module.css";
 export function Landing() {
   return (
     <section className={styles.landing} aria-label="Introduction">
-      <p className={styles.eyebrow}>Portfolio · Java Stream semantics, visualized in 3D</p>
+      <p className={styles.eyebrow}>Portfolio · Java Stream semantics, visualized as a live flow-map</p>
 
       <h1 className={styles.thesis}>
-        A neural network <span className={styles.wiredBack}>wired backwards</span>.
+        A stream pipeline <span className={styles.wiredBack}>wired backwards</span>.
       </h1>
 
       <p className={styles.lead}>
         In a Java stream the <strong>consumer drives the producer</strong>. The terminal operation
         pulls; demand travels <em>backward</em> to the source, which releases one element at a time
-        — lazily, only when asked. StreamLab makes that retrograde pull visible as a living neural
-        conduit.
+        — lazily, only when asked. StreamLab makes that retrograde pull visible as a living
+        flow-map.
       </p>
 
       <p className={styles.differentiator}>

@@ -8,17 +8,20 @@ import { Transport } from "@/viz/chrome/Transport";
 import { Controls } from "@/viz/chrome/Controls";
 import { CodePanel } from "@/viz/chrome/CodePanel";
 import { StepList } from "@/viz/chrome/StepList";
+import { useAutoPlay } from "@/viz/flowmap/useAutoPlay";
 import { useSyncReducedMotion } from "@/viz/useReducedMotion";
 
-// The WebGL canvas is dynamically imported with `ssr: false` so three.js never
-// runs during (static) prerender — the conduit is a client-only concern.
-const ConduitCanvas = dynamic(() => import("@/viz/ConduitCanvas"), {
+// The flow-map canvas is client-only (it measures the DOM and paints per frame),
+// so it is dynamically imported with `ssr: false` — nothing renders during the
+// static prerender, just the ground until the client mounts.
+const FlowMap = dynamic(() => import("@/viz/flowmap/FlowMap").then((m) => m.FlowMap), {
   ssr: false,
   loading: () => <div className={styles.canvasFallback} aria-hidden />,
 });
 
 export default function Home() {
   useSyncReducedMotion(); // mirror prefers-reduced-motion into the store (S1.11)
+  useAutoPlay(); // advance the playhead each frame from the pure playback clock (S5.1)
 
   return (
     <>
@@ -28,14 +31,14 @@ export default function Home() {
         <header className={styles.header}>
           <h1 className={styles.title}>StreamLab</h1>
           <p className={styles.tagline}>
-            A neural network wired backwards — the consumer drives the producer.
+            A stream pipeline wired backwards — the terminal pulls, one element at a time.
           </p>
         </header>
 
         <div className={styles.workspace}>
-          <section className={styles.stage} aria-label="Neural conduit stage">
+          <section className={styles.stage} aria-label="Stream pipeline flow-map">
             <div className={styles.canvasWrap}>
-              <ConduitCanvas />
+              <FlowMap />
               <Caption />
             </div>
             <Transport />
