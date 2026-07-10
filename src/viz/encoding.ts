@@ -69,5 +69,6 @@ export function pulseRadius(total: number): number {
  * grayscale reader loses nothing.
  */
 export function pulseLabel(total: number, region: Region): string {
-  return `${regionGlyph(region)} $${total} · ${region}`;
+  // Round: the map morph passes fractional totals mid-shrink; the label reads dollars.
+  return `${regionGlyph(region)} $${Math.round(total)} · ${region}`;
 }
