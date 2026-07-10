@@ -27,28 +27,29 @@ import styles from "./flowmap.module.css";
  * store, so the transport, controls, and code panel drive it unchanged.
  */
 
-/** Region hues — the group key's identity, echoed on pulses, bins, and source cells. */
+/** Region hues — the group key's identity, echoed on pulses, bins, and source cells.
+    Chosen to read on a white ground and to carry white label text on the pulse. */
 const REGION_HUE: Record<Region, string> = {
-  West: "#38bdf8",
-  East: "#34d399",
-  North: "#f472b6",
+  West: "#0284c7",
+  East: "#059669",
+  North: "#db2777",
 };
 
 /** Per-stage identity: label, the source it names, and its accent hue. */
 const STAGE_META: Record<StageId, { label: string; hue: string }> = {
-  source: { label: "source", hue: "#38bdf8" },
-  filter: { label: "filter", hue: "#4ade80" },
-  map: { label: "map", hue: "#fbbf24" },
-  terminal: { label: "collect", hue: "#a78bfa" },
+  source: { label: "source", hue: "#0284c7" },
+  filter: { label: "filter", hue: "#059669" },
+  map: { label: "map", hue: "#d97706" },
+  terminal: { label: "collect", hue: "#7c3aed" },
 };
 const STAGE_ORDER: readonly StageId[] = ["source", "filter", "map", "terminal"];
 
 const MONO = '"Roboto Mono", ui-monospace, "SF Mono", Menlo, monospace';
-const DEMAND_HUE = "#c4b5fd";
-const INK = "#e7ecf8";
-const MUTED = "#8b98b4";
-const FAINT = "#5a6684";
-const PANEL = "rgba(18, 26, 44, 0.72)";
+const DEMAND_HUE = "#7c3aed";
+const INK = "#16203a";
+const MUTED = "#55627d";
+const FAINT = "#94a1b8";
+const PANEL = "rgba(20, 40, 90, 0.045)";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 const alpha = (hex: string, a: number) => {
@@ -108,14 +109,18 @@ export function FlowMap() {
 
     // ── coordinate mapping: geometry space (x∈[-6,6]) → canvas ─────────────
     const padX = 92;
-    const padTop = 104;
-    const padBot = 78;
     const innerW = W - 2 * padX;
     const geoX = (gx: number) => padX + ((gx + 6) / 12) * innerW;
-    const bandTop = padTop;
-    const bandBot = H - padBot;
+    // Cap the pipeline's depth and center it vertically — it needn't fill a tall
+    // canvas, so on a big screen it stays a compact band with breathing room.
+    const topReserve = 96; // HUD + section labels sit above the band
+    const botReserve = 48;
+    const availH = H - topReserve - botReserve;
+    const bandH = Math.min(availH, 360);
+    const bandTop = topReserve + (availH - bandH) / 2;
+    const bandBot = bandTop + bandH;
     const midY = (bandTop + bandBot) / 2;
-    const laneScale = clamp((bandBot - bandTop) / 8, 18, 30);
+    const laneScale = clamp(bandH / 8, 18, 30);
     const geoY = (gy: number) => midY + gy * laneScale;
 
     const lanes = parallel
@@ -123,13 +128,14 @@ export function FlowMap() {
       : [{ lane: "·", y: 0, estimatedSize: metrics.totalPulled }];
     const cancelled = parallel ? cancelledLanes(log, playhead) : new Set<string>();
 
-    // ── section labels (below the HUD's two lines so they never collide) ──
+    // ── section labels, just above the (centered) band ────────────────────
+    const labelY = bandTop - 24;
     ctx.textAlign = "center";
     ctx.fillStyle = FAINT;
     ctx.font = `600 10px ${MONO}`;
-    ctx.fillText("SOURCE", geoX(stageX("source")), 68);
-    ctx.fillText("INTERMEDIATE OPS", (geoX(stageX("filter")) + geoX(stageX("map"))) / 2, 68);
-    ctx.fillText("TERMINAL", geoX(stageX("terminal")), 68);
+    ctx.fillText("SOURCE", geoX(stageX("source")), labelY);
+    ctx.fillText("INTERMEDIATE OPS", (geoX(stageX("filter")) + geoX(stageX("map"))) / 2, labelY);
+    ctx.fillText("TERMINAL", geoX(stageX("terminal")), labelY);
 
     // ── stage columns (behind the conduit) ────────────────────────────────
     const colW = 96;
@@ -192,7 +198,7 @@ export function FlowMap() {
       index: metrics.index,
       x: geoX(stageX("source")),
       colW,
-      bandTop,
+      bandTop: bandTop + 34, // clear the "source / orders" column header
       bandBot,
     });
 
@@ -469,7 +475,7 @@ function drawHud(
     ctx.fillStyle = good ? STAGE_META.filter.hue : slower ? "#fb7185" : MUTED;
     ctx.font = `600 11px ${MONO}`;
     ctx.fillText(
-      slower ? `${speedup.toFixed(2)}× — slower than 1 lane` : `${speedup.toFixed(2)}× vs 1 lane`,
+      slower ? `${speedup.toFixed(2)}× slower than 1 lane` : `${speedup.toFixed(2)}× vs 1 lane`,
       rx,
       58,
     );

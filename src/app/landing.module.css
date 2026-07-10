@@ -7,12 +7,12 @@
   max-width: 60rem;
   margin: 0 auto;
   padding: 2rem 2rem 3rem;
-  background: radial-gradient(circle at 50% 30%, #0d1526 0%, var(--bg) 68%);
+  background: radial-gradient(circle at 50% 28%, #ffffff 0%, var(--bg) 70%);
 }
 
 .eyebrow {
   margin: 0;
-  color: #7f9dd6;
+  color: var(--accent);
   font:
     600 0.8rem/1.4 ui-monospace,
     SFMono-Regular,
@@ -31,7 +31,7 @@
 }
 
 .wiredBack {
-  background: linear-gradient(96deg, #5aa0ff, #c77dff);
+  background: linear-gradient(96deg, #2563eb, #9333ea);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -55,7 +55,7 @@
 
 .lead strong,
 .differentiator strong {
-  color: #cfe0ff;
+  color: var(--accent-ink);
   font-weight: 600;
 }
 
@@ -69,7 +69,7 @@
   font-size: 1.05rem;
   font-weight: 600;
   text-decoration: none;
-  box-shadow: 0 8px 24px rgba(43, 108, 255, 0.35);
+  box-shadow: 0 8px 24px rgba(43, 108, 255, 0.28);
   transition:
     transform 140ms ease,
     box-shadow 140ms ease;
@@ -77,11 +77,11 @@
 
 .cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(43, 108, 255, 0.45);
+  box-shadow: 0 12px 30px rgba(43, 108, 255, 0.38);
 }
 
 .cta:focus-visible {
-  outline: 2px solid #cfe0ff;
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 

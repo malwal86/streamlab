@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "StreamLab — Java Pipeline Visualizer",
+  title: "StreamLab · Java Pipeline Visualizer",
   description:
-    "A live flow-map that faithfully simulates Java Stream execution semantics — lazy, demand-driven, one element at a time.",
+    "A live flow-map that faithfully simulates Java Stream execution semantics: lazy, demand-driven, one element at a time.",
 };
 
 export const viewport: Viewport = {

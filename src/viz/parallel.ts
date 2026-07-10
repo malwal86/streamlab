@@ -200,12 +200,12 @@ export function parallelCaptionFor(log: readonly EngineEvent[], playhead: number
     // findAny is *first lane home*. Which one is legible from the cancel reasons the
     // engine already wrote (see parallelTerminalOf) — no viz-side re-derivation.
     const terminal = parallelTerminalOf(log);
-    if (terminal === "findFirst") return "findFirst — ordered short-circuit: earliest match wins";
-    if (terminal === "findAny") return "findAny — first lane home wins";
-    return "FOUND — the terminal latches";
+    if (terminal === "findFirst") return "findFirst · ordered short-circuit: earliest match wins";
+    if (terminal === "findAny") return "findAny · first lane home wins";
+    return "FOUND · the terminal latches";
   }
   if (current.kind === "cancel") {
-    return `lane ${current.lane ?? ""} cancelled — ${current.reason}`.replace("  ", " ");
+    return `lane ${current.lane ?? ""} cancelled · ${current.reason}`.replace("  ", " ");
   }
   const spike = activeLaneSpike(log, playhead);
   if (spike?.kind === "demand") return "lane pulls the next element";
