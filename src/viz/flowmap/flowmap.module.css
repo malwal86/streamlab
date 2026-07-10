@@ -1,15 +1,15 @@
 /* The flow-map stage — fills the canvas slot the page gives it. All the pipeline
    drawing happens on the canvas itself (source tray, conduit, pulses, bins, HUD),
-   so this module is only the sizing shell and a subtle ground. */
+   so this module is only the sizing shell and a subtle white ground. */
 
 .root {
   position: absolute;
   inset: 0;
   overflow: hidden;
   background:
-    radial-gradient(900px 460px at 82% -10%, rgba(96, 165, 250, 0.1), transparent 60%),
-    radial-gradient(700px 420px at 6% 6%, rgba(56, 189, 248, 0.09), transparent 55%),
-    radial-gradient(circle at 50% 45%, #0d1424 0%, var(--bg) 72%);
+    radial-gradient(900px 460px at 82% -10%, rgba(37, 99, 235, 0.06), transparent 60%),
+    radial-gradient(700px 420px at 6% 6%, rgba(2, 132, 199, 0.06), transparent 55%),
+    radial-gradient(circle at 50% 45%, #ffffff 0%, var(--bg) 78%);
 }
 
 .canvas {

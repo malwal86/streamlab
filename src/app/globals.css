@@ -1,8 +1,17 @@
 :root {
-  color-scheme: dark;
-  --bg: #05060a;
-  --fg: #e8ecf4;
-  --muted: #8a93a6;
+  color-scheme: light;
+  /* Light theme — cool near-white ground, ink text, one blue accent. */
+  --bg: #eef2f9;
+  --surface: #ffffff;
+  --surface-2: #f3f6fc;
+  --fg: #16203a;
+  --muted: #55627d;
+  --faint: #8a97b0;
+  --line: rgba(20, 33, 66, 0.12);
+  --line-strong: rgba(20, 33, 66, 0.2);
+  --accent: #2563eb;
+  --accent-ink: #1e40af;
+  --accent-soft: rgba(37, 99, 235, 0.1);
 }
 
 * {

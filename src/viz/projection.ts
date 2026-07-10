@@ -454,7 +454,7 @@ const PULSE_CAPTION: Partial<Record<EventKind, string>> = {
   transform: "map applies applyDiscount",
   route: "groupingBy routes by region",
   accumulate: "accumulate into the region bin",
-  found: "findFirst latches — FOUND",
+  found: "findFirst latches · FOUND",
 };
 
 /**

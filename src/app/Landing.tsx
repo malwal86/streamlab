@@ -22,14 +22,13 @@ export function Landing() {
 
       <p className={styles.lead}>
         In a Java stream the <strong>consumer drives the producer</strong>. The terminal operation
-        pulls; demand travels <em>backward</em> to the source, which releases one element at a time
-        — lazily, only when asked. StreamLab makes that retrograde pull visible as a living
-        flow-map.
+        pulls; demand travels <em>backward</em> to the source, which releases one element at a time,
+        lazily, only when asked. StreamLab makes that retrograde pull visible as a living flow-map.
       </p>
 
       <p className={styles.differentiator}>
         Nothing here is faked. Every pulse, fork, and short-circuit is a{" "}
-        <strong>pure function of a real Java Stream execution log</strong> — the visualization can
+        <strong>pure function of a real Java Stream execution log</strong>. The visualization can
         never show an outcome the engine did not actually produce.
       </p>
 

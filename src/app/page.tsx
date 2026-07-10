@@ -31,7 +31,7 @@ export default function Home() {
         <header className={styles.header}>
           <h1 className={styles.title}>StreamLab</h1>
           <p className={styles.tagline}>
-            A stream pipeline wired backwards — the terminal pulls, one element at a time.
+            A stream pipeline wired backwards. The terminal pulls, one element at a time.
           </p>
         </header>
 
