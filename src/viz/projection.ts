@@ -63,6 +63,7 @@ const FORWARD_STATION: Partial<Record<EventKind, StageId>> = {
   transform: "map",
   route: "terminal",
   accumulate: "terminal",
+  found: "terminal", // Slice B: the survivor reaches the terminal and latches (S2.2)
 };
 
 /** The x-station of a forward-journey event, or `null` if the kind isn't one. */
@@ -172,6 +173,22 @@ export interface BinFill {
 }
 
 /**
+ * The terminal's "FOUND" latch (S2.2, Slice B) — the payoff of a short-circuit run.
+ * Non-null once the playhead reaches the `found` event and **stays latched** for the
+ * rest of the run (the terminal does not un-find). Carries the matched element's
+ * identity + payload so the badge reads it without color (`elementId` is exactly
+ * `found.elementId`, S2.2 AC1). Distinct from {@link BinFill}: bins are towers off
+ * to the side; the latch fires *on the terminal itself*, the Slice B motif.
+ */
+export interface FoundLatch {
+  readonly elementId: number;
+  /** The matched element's region — glyph + hue on the badge (never color alone). */
+  readonly region: Region;
+  /** Its total (post-`map`, the discounted value the pulse carried in). */
+  readonly total: number;
+}
+
+/**
  * What the scene draws at a playhead. Exactly one of `demandSpike`/`pulse` is
  * non-null while a beat is in flight (or both null on a non-heartbeat event) — the
  * "never two spikes" guardrail, true by construction (S1.5 AC3).
@@ -183,6 +200,8 @@ export interface SceneState {
   readonly filterReadout: FilterReadout | null;
   /** Every region bin's fill up to the playhead — the growing 3D towers (S1.9). */
   readonly bins: readonly BinFill[];
+  /** The terminal's latched "FOUND" result once the playhead passes `found` (S2.2); else null. */
+  readonly found: FoundLatch | null;
 }
 
 /** Zero-fill bins for every region — the empty-scene / pre-roll state. */
@@ -196,6 +215,7 @@ const EMPTY_SCENE: SceneState = Object.freeze({
   pulse: null,
   filterReadout: null,
   bins: EMPTY_BINS,
+  found: null,
 });
 
 /**
@@ -214,6 +234,27 @@ function binsAt(log: readonly EngineEvent[], eventIndex: number, frac: number): 
     counts.set(event.key, (counts.get(event.key) ?? 0) + contribution);
   }
   return REGIONS.map((region) => ({ region, count: counts.get(region) ?? 0 }));
+}
+
+/**
+ * The terminal's latch at `eventIndex`: the `found` event at or before the playhead,
+ * projected to a {@link FoundLatch} (S2.2). Scans forward for the first `found` (a
+ * short-circuit run has at most one) and, if it is at or before the current index,
+ * reads the matched element's payload — region from its `emit`, total from its
+ * `map` (the discounted value it carried into the terminal). The latch is a pure
+ * read of the log, so what glows "FOUND" is always exactly `found.elementId` (AC1),
+ * and once set it persists to the end of the run (the scan never clears it).
+ */
+function foundLatchAt(log: readonly EngineEvent[], eventIndex: number): FoundLatch | null {
+  for (let i = 0; i <= eventIndex; i += 1) {
+    const event = log[i]!;
+    if (event.kind !== "found") continue;
+    const payload = emitPayloadOf(log, event.elementId);
+    if (!payload) return null;
+    const total = transformOf(log, event.elementId)?.after ?? payload.total;
+    return { elementId: event.elementId, region: payload.region, total };
+  }
+  return null;
 }
 
 /** How far below the conduit a rejected pulse sinks as it dissipates (spec §3.6). */
@@ -281,6 +322,8 @@ export function projectScene(
   // demand, and the active region's tower grows across its `accumulate` beat (S1.9).
   // Reduced motion counts the current accumulate in full (no growth animation).
   const bins = binsAt(log, index, reducedMotion ? 1 : frac);
+  // The FOUND latch persists once passed — independent of what is in flight (S2.2).
+  const found = foundLatchAt(log, index);
 
   // Retrograde demand spike (terminal → source): the beat's opening pull.
   if (current.kind === "demand") {
@@ -291,6 +334,7 @@ export function projectScene(
       pulse: null,
       filterReadout: null,
       bins,
+      found,
     };
   }
 
@@ -321,6 +365,10 @@ export function projectScene(
       } else if (current.kind === "accumulate") {
         // Landed at the bin, merging in as the tower grows over the beat.
         pulse = { ...base, x: binX, y: 0, z: binZ, opacity: 1 - posT };
+      } else if (current.kind === "found") {
+        // Slice B: the survivor reaches the terminal and *latches* — it holds there,
+        // fully lit, rather than dispersing to a bin (the FOUND payoff, S2.2).
+        pulse = { ...base, x: stageX("terminal"), y: 0, z: 0, opacity: 1 };
       } else {
         // emit/test/survive/transform: travel along the main axis toward the next
         // station while the journey continues; otherwise hold in place.
@@ -330,13 +378,13 @@ export function projectScene(
         pulse = { ...base, x: lerp(fromX, toX, posT), y: 0, z: 0, opacity: 1 };
       }
 
-      return { demandSpike: null, pulse, filterReadout: filterReadoutFor(log, pulse), bins };
+      return { demandSpike: null, pulse, filterReadout: filterReadoutFor(log, pulse), bins, found };
     }
   }
 
-  // A non-heartbeat event (parallel `fork`/`lane-demand`/… — later epics): nothing
-  // in flight, but the bins still show their fill so far.
-  return { demandSpike: null, pulse: null, filterReadout: null, bins };
+  // A non-heartbeat event (`shortcircuit`, or parallel `fork`/`lane-demand`/… —
+  // later epics): nothing in flight, but the bins and the FOUND latch still show.
+  return { demandSpike: null, pulse: null, filterReadout: null, bins, found };
 }
 
 /** The caption shown for each forward-pulse stage (the demand caption is fixed). */
@@ -348,6 +396,7 @@ const PULSE_CAPTION: Partial<Record<EventKind, string>> = {
   transform: "map applies applyDiscount",
   route: "groupingBy routes by region",
   accumulate: "accumulate into the region bin",
+  found: "findFirst latches — FOUND",
 };
 
 /**

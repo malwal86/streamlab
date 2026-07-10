@@ -10,6 +10,7 @@ import { Heartbeat } from "./Heartbeat";
 import { AutoPlay } from "./AutoPlay";
 import { FilterReadout } from "./FilterReadout";
 import { RegionBins } from "./RegionBins";
+import { FoundLatch } from "./FoundLatch";
 
 /**
  * The inert **source stack** (S1.4): one dim dot per element the source will
@@ -57,6 +58,7 @@ export function ConduitScene() {
       ))}
       <SourceStack count={stack} />
       <RegionBins />
+      <FoundLatch />
 
       <Heartbeat />
       <FilterReadout />
