@@ -45,10 +45,6 @@ interface StoreState {
 
   /** Move the playhead (transport scrubbing — the UI arrives in S1.10). Does not re-run the engine. */
   setPlayhead: (playhead: number) => void;
-
-  /** UI-only: whether the placeholder scene idle-rotates. Not part of the engine run (replaced by S1.4). */
-  idleSpin: boolean;
-  setIdleSpin: (value: boolean) => void;
 }
 
 export const useAppStore = create<StoreState>((set) => {
@@ -76,8 +72,5 @@ export const useAppStore = create<StoreState>((set) => {
     setTerminal: (terminal) => applyConfig({ terminal }),
 
     setPlayhead: (playhead) => set({ playhead }),
-
-    idleSpin: true,
-    setIdleSpin: (value) => set({ idleSpin: value }),
   };
 });
