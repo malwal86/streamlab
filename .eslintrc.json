@@ -1,3 +1,35 @@
 {
-  "extends": ["next/core-web-vitals", "prettier"]
+  "extends": ["next/core-web-vitals", "prettier"],
+  "overrides": [
+    {
+      "files": ["src/engine/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "react",
+                  "react-dom",
+                  "react/*",
+                  "react-dom/*",
+                  "next",
+                  "next/*",
+                  "zustand",
+                  "zustand/*",
+                  "@react-three/*",
+                  "@/store",
+                  "@/store/*",
+                  "@/viz",
+                  "@/viz/*"
+                ],
+                "message": "@/engine is the pure, framework-agnostic kernel (S0.7 boundary): it may not import React / Next / Zustand / the viz / the store. The store depends on the engine, never the reverse."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }
