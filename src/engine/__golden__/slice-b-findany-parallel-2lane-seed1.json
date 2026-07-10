@@ -1,0 +1,85 @@
+[
+  {
+    "kind": "fork",
+    "lanes": 2,
+    "op": "fork",
+    "splitTree": {
+      "children": [
+        {
+          "estimatedSize": 5,
+          "lane": "L0"
+        },
+        {
+          "estimatedSize": 6,
+          "lane": "L1"
+        }
+      ],
+      "estimatedSize": 11,
+      "lane": "L0-L1"
+    },
+    "tick": 0
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L1",
+    "nextStage": "source",
+    "op": "find",
+    "tick": 1
+  },
+  {
+    "elementId": 6,
+    "input": {
+      "region": "West",
+      "total": 150
+    },
+    "kind": "emit",
+    "lane": "L1",
+    "op": "source",
+    "tick": 2
+  },
+  {
+    "elementId": 6,
+    "input": {
+      "region": "West",
+      "total": 150
+    },
+    "kind": "test",
+    "lane": "L1",
+    "op": "filter",
+    "output": true,
+    "predicate": "o.total > 100",
+    "tick": 3
+  },
+  {
+    "elementId": 6,
+    "kind": "survive",
+    "lane": "L1",
+    "nextStage": "map",
+    "op": "filter",
+    "tick": 4
+  },
+  {
+    "after": 135,
+    "before": 150,
+    "elementId": 6,
+    "kind": "transform",
+    "lane": "L1",
+    "nextStage": "collect",
+    "op": "map",
+    "tick": 5
+  },
+  {
+    "elementId": 6,
+    "kind": "found",
+    "lane": "L1",
+    "op": "find",
+    "tick": 6
+  },
+  {
+    "kind": "cancel",
+    "lane": "L0",
+    "op": "find",
+    "reason": "another lane found a match first",
+    "tick": 7
+  }
+]
