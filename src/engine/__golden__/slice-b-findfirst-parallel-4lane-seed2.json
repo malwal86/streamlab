@@ -1,0 +1,293 @@
+[
+  {
+    "kind": "fork",
+    "lanes": 4,
+    "op": "fork",
+    "splitTree": {
+      "children": [
+        {
+          "children": [
+            {
+              "estimatedSize": 2,
+              "lane": "L0"
+            },
+            {
+              "estimatedSize": 3,
+              "lane": "L1"
+            }
+          ],
+          "estimatedSize": 5,
+          "lane": "L0-L1"
+        },
+        {
+          "children": [
+            {
+              "estimatedSize": 3,
+              "lane": "L2"
+            },
+            {
+              "estimatedSize": 3,
+              "lane": "L3"
+            }
+          ],
+          "estimatedSize": 6,
+          "lane": "L2-L3"
+        }
+      ],
+      "estimatedSize": 11,
+      "lane": "L0-L1-L2-L3"
+    },
+    "tick": 0
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L0",
+    "nextStage": "source",
+    "op": "find",
+    "tick": 1
+  },
+  {
+    "elementId": 1,
+    "input": {
+      "region": "West",
+      "total": 80
+    },
+    "kind": "emit",
+    "lane": "L0",
+    "op": "source",
+    "tick": 2
+  },
+  {
+    "elementId": 1,
+    "input": {
+      "region": "West",
+      "total": 80
+    },
+    "kind": "test",
+    "lane": "L0",
+    "op": "filter",
+    "output": false,
+    "predicate": "o.total > 100",
+    "tick": 3
+  },
+  {
+    "elementId": 1,
+    "kind": "die",
+    "lane": "L0",
+    "op": "filter",
+    "tick": 4
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L1",
+    "nextStage": "source",
+    "op": "find",
+    "tick": 5
+  },
+  {
+    "elementId": 3,
+    "input": {
+      "region": "East",
+      "total": 95
+    },
+    "kind": "emit",
+    "lane": "L1",
+    "op": "source",
+    "tick": 6
+  },
+  {
+    "elementId": 3,
+    "input": {
+      "region": "East",
+      "total": 95
+    },
+    "kind": "test",
+    "lane": "L1",
+    "op": "filter",
+    "output": false,
+    "predicate": "o.total > 100",
+    "tick": 7
+  },
+  {
+    "elementId": 3,
+    "kind": "die",
+    "lane": "L1",
+    "op": "filter",
+    "tick": 8
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L1",
+    "nextStage": "source",
+    "op": "find",
+    "tick": 9
+  },
+  {
+    "elementId": 4,
+    "input": {
+      "region": "East",
+      "total": 450
+    },
+    "kind": "emit",
+    "lane": "L1",
+    "op": "source",
+    "tick": 10
+  },
+  {
+    "elementId": 4,
+    "input": {
+      "region": "East",
+      "total": 450
+    },
+    "kind": "test",
+    "lane": "L1",
+    "op": "filter",
+    "output": true,
+    "predicate": "o.total > 100",
+    "tick": 11
+  },
+  {
+    "elementId": 4,
+    "kind": "survive",
+    "lane": "L1",
+    "nextStage": "map",
+    "op": "filter",
+    "tick": 12
+  },
+  {
+    "after": 405,
+    "before": 450,
+    "elementId": 4,
+    "kind": "transform",
+    "lane": "L1",
+    "nextStage": "collect",
+    "op": "map",
+    "tick": 13
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L3",
+    "nextStage": "source",
+    "op": "find",
+    "tick": 14
+  },
+  {
+    "elementId": 9,
+    "input": {
+      "region": "North",
+      "total": 2000
+    },
+    "kind": "emit",
+    "lane": "L3",
+    "op": "source",
+    "tick": 15
+  },
+  {
+    "elementId": 9,
+    "input": {
+      "region": "North",
+      "total": 2000
+    },
+    "kind": "test",
+    "lane": "L3",
+    "op": "filter",
+    "output": true,
+    "predicate": "o.total > 100",
+    "tick": 16
+  },
+  {
+    "elementId": 9,
+    "kind": "survive",
+    "lane": "L3",
+    "nextStage": "map",
+    "op": "filter",
+    "tick": 17
+  },
+  {
+    "after": 1800,
+    "before": 2000,
+    "elementId": 9,
+    "kind": "transform",
+    "lane": "L3",
+    "nextStage": "collect",
+    "op": "map",
+    "tick": 18
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L0",
+    "nextStage": "source",
+    "op": "find",
+    "tick": 19
+  },
+  {
+    "elementId": 2,
+    "input": {
+      "region": "West",
+      "total": 1200
+    },
+    "kind": "emit",
+    "lane": "L0",
+    "op": "source",
+    "tick": 20
+  },
+  {
+    "elementId": 2,
+    "input": {
+      "region": "West",
+      "total": 1200
+    },
+    "kind": "test",
+    "lane": "L0",
+    "op": "filter",
+    "output": true,
+    "predicate": "o.total > 100",
+    "tick": 21
+  },
+  {
+    "elementId": 2,
+    "kind": "survive",
+    "lane": "L0",
+    "nextStage": "map",
+    "op": "filter",
+    "tick": 22
+  },
+  {
+    "after": 1080,
+    "before": 1200,
+    "elementId": 2,
+    "kind": "transform",
+    "lane": "L0",
+    "nextStage": "collect",
+    "op": "map",
+    "tick": 23
+  },
+  {
+    "elementId": 2,
+    "kind": "found",
+    "lane": "L0",
+    "op": "find",
+    "tick": 24
+  },
+  {
+    "kind": "cancel",
+    "lane": "L1",
+    "op": "find",
+    "reason": "earlier encounter-order match won",
+    "tick": 25
+  },
+  {
+    "kind": "cancel",
+    "lane": "L2",
+    "op": "find",
+    "reason": "earlier encounter-order match won",
+    "tick": 26
+  },
+  {
+    "kind": "cancel",
+    "lane": "L3",
+    "op": "find",
+    "reason": "earlier encounter-order match won",
+    "tick": 27
+  }
+]
