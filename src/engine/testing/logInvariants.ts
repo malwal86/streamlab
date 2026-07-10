@@ -63,6 +63,43 @@ export function countKind(log: readonly EngineEvent[], kind: EngineEvent["kind"]
 }
 
 /**
+ * The parallel per-lane single-file invariant (S3.1 AC4): **within each lane**, at
+ * every `emit` strictly more of that lane's `lane-demand`s than its `emit`s have been
+ * seen so far. This is `pullOrderViolations` restricted to one lane, with
+ * `lane-demand` playing the role of `demand`: across lanes beats interleave freely
+ * (that *is* the parallelism), but no single lane may have two elements in flight at
+ * once — one spike per lane (spec §3.6). Events with no `lane` (a sequential log, or
+ * the parallel `fork`/`combine` framing) are ignored. Returns every violation in log
+ * order, tagged nowhere by lane in the shape — the `tick` locates it.
+ */
+export function laneSingleFileViolations(log: readonly EngineEvent[]): readonly PullViolation[] {
+  const violations: PullViolation[] = [];
+  const perLane = new Map<string, { demands: number; emits: number }>();
+  for (const event of log) {
+    if (event.lane === undefined) continue;
+    let counts = perLane.get(event.lane);
+    if (!counts) {
+      counts = { demands: 0, emits: 0 };
+      perLane.set(event.lane, counts);
+    }
+    if (event.kind === "lane-demand") {
+      counts.demands += 1;
+    } else if (event.kind === "emit") {
+      if (counts.demands <= counts.emits) {
+        violations.push({ tick: event.tick, demandsSoFar: counts.demands, emitsSoFar: counts.emits });
+      }
+      counts.emits += 1;
+    }
+  }
+  return violations;
+}
+
+/** True iff every lane in `log` is single-file — no lane has two spikes in flight (S3.1 AC4). */
+export function isPerLaneSingleFile(log: readonly EngineEvent[]): boolean {
+  return laneSingleFileViolations(log).length === 0;
+}
+
+/**
  * The short-circuit invariant (S2.1 AC2): once a `findFirst`/`findAny` terminal
  * records `found`, **no `demand` or `emit` may follow** — traversal must never pull
  * past the decisive element. Returns the ticks of any offending pull events after

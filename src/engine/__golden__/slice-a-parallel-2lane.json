@@ -1,0 +1,234 @@
+[
+  {
+    "kind": "fork",
+    "lanes": 2,
+    "op": "fork",
+    "splitTree": {
+      "children": [
+        {
+          "estimatedSize": 5,
+          "lane": "L0"
+        },
+        {
+          "estimatedSize": 6,
+          "lane": "L1"
+        }
+      ],
+      "estimatedSize": 11,
+      "lane": "L0-L1"
+    },
+    "tick": 0
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L1",
+    "nextStage": "source",
+    "op": "collect",
+    "tick": 1
+  },
+  {
+    "elementId": 6,
+    "input": {
+      "region": "West",
+      "total": 150
+    },
+    "kind": "emit",
+    "lane": "L1",
+    "op": "source",
+    "tick": 2
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L1",
+    "nextStage": "source",
+    "op": "collect",
+    "tick": 3
+  },
+  {
+    "elementId": 7,
+    "input": {
+      "region": "East",
+      "total": 600
+    },
+    "kind": "emit",
+    "lane": "L1",
+    "op": "source",
+    "tick": 4
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L1",
+    "nextStage": "source",
+    "op": "collect",
+    "tick": 5
+  },
+  {
+    "elementId": 8,
+    "input": {
+      "region": "North",
+      "total": 99
+    },
+    "kind": "emit",
+    "lane": "L1",
+    "op": "source",
+    "tick": 6
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L0",
+    "nextStage": "source",
+    "op": "collect",
+    "tick": 7
+  },
+  {
+    "elementId": 1,
+    "input": {
+      "region": "West",
+      "total": 80
+    },
+    "kind": "emit",
+    "lane": "L0",
+    "op": "source",
+    "tick": 8
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L0",
+    "nextStage": "source",
+    "op": "collect",
+    "tick": 9
+  },
+  {
+    "elementId": 2,
+    "input": {
+      "region": "West",
+      "total": 1200
+    },
+    "kind": "emit",
+    "lane": "L0",
+    "op": "source",
+    "tick": 10
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L0",
+    "nextStage": "source",
+    "op": "collect",
+    "tick": 11
+  },
+  {
+    "elementId": 3,
+    "input": {
+      "region": "East",
+      "total": 95
+    },
+    "kind": "emit",
+    "lane": "L0",
+    "op": "source",
+    "tick": 12
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L1",
+    "nextStage": "source",
+    "op": "collect",
+    "tick": 13
+  },
+  {
+    "elementId": 9,
+    "input": {
+      "region": "North",
+      "total": 2000
+    },
+    "kind": "emit",
+    "lane": "L1",
+    "op": "source",
+    "tick": 14
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L1",
+    "nextStage": "source",
+    "op": "collect",
+    "tick": 15
+  },
+  {
+    "elementId": 10,
+    "input": {
+      "region": "West",
+      "total": 100
+    },
+    "kind": "emit",
+    "lane": "L1",
+    "op": "source",
+    "tick": 16
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L0",
+    "nextStage": "source",
+    "op": "collect",
+    "tick": 17
+  },
+  {
+    "elementId": 4,
+    "input": {
+      "region": "East",
+      "total": 450
+    },
+    "kind": "emit",
+    "lane": "L0",
+    "op": "source",
+    "tick": 18
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L0",
+    "nextStage": "source",
+    "op": "collect",
+    "tick": 19
+  },
+  {
+    "elementId": 5,
+    "input": {
+      "region": "North",
+      "total": 300
+    },
+    "kind": "emit",
+    "lane": "L0",
+    "op": "source",
+    "tick": 20
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L0",
+    "nextStage": "source",
+    "op": "collect",
+    "tick": 21
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L1",
+    "nextStage": "source",
+    "op": "collect",
+    "tick": 22
+  },
+  {
+    "elementId": 11,
+    "input": {
+      "region": "West",
+      "total": 250
+    },
+    "kind": "emit",
+    "lane": "L1",
+    "op": "source",
+    "tick": 23
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L1",
+    "nextStage": "source",
+    "op": "collect",
+    "tick": 24
+  }
+]
