@@ -104,17 +104,31 @@ export interface FilterReadout {
   readonly passed: boolean;
 }
 
+/** The specific event member for a given `kind` discriminant (e.g. `"emit"` → {@link EmitEvent}). */
+type EventOfKind<K extends EventKind> = Extract<EngineEvent, { kind: K }>;
+
+/**
+ * The first log event of `kind` naming `elementId` — the single scan the payload
+ * lookups below share. A pure read of the log (the first match is the canonical one,
+ * since every element passes each stage at most once in encounter order).
+ */
+function findElementEvent<K extends EventKind>(
+  log: readonly EngineEvent[],
+  kind: K,
+  elementId: number,
+): EventOfKind<K> | undefined {
+  return log.find(
+    (event): event is EventOfKind<K> => event.kind === kind && event.elementId === elementId,
+  );
+}
+
 /** The element's payload from its `emit` — region (fixed) and the pre-map total. */
 function emitPayloadOf(
   log: readonly EngineEvent[],
   elementId: number,
 ): { region: Region; total: number } | null {
-  for (const event of log) {
-    if (event.kind === "emit" && event.elementId === elementId) {
-      return { region: event.input.region, total: event.input.total };
-    }
-  }
-  return null;
+  const emit = findElementEvent(log, "emit", elementId);
+  return emit ? { region: emit.input.region, total: emit.input.total } : null;
 }
 
 /** The element's `map` transform (before/after totals), or null if it never mapped (e.g. a reject). */
@@ -122,12 +136,8 @@ function transformOf(
   log: readonly EngineEvent[],
   elementId: number,
 ): { before: number; after: number } | null {
-  for (const event of log) {
-    if (event.kind === "transform" && event.elementId === elementId) {
-      return { before: event.before, after: event.after };
-    }
-  }
-  return null;
+  const transform = findElementEvent(log, "transform", elementId);
+  return transform ? { before: transform.before, after: transform.after } : null;
 }
 
 /**
@@ -154,11 +164,6 @@ function currentTotal(
   return initialTotal; // pre-map beats (emit/test/survive/die) carry the original total
 }
 
-/**
- * What the scene draws at a playhead. Exactly one of `demandSpike`/`pulse` is
- * non-null while a beat is in flight (or both null on a non-heartbeat event) — the
- * "never two spikes" guardrail, true by construction (S1.5 AC3).
- */
 /** A region bin's fill at the current playhead — its count so far (fractional while growing). */
 export interface BinFill {
   readonly region: Region;
@@ -166,6 +171,11 @@ export interface BinFill {
   readonly count: number;
 }
 
+/**
+ * What the scene draws at a playhead. Exactly one of `demandSpike`/`pulse` is
+ * non-null while a beat is in flight (or both null on a non-heartbeat event) — the
+ * "never two spikes" guardrail, true by construction (S1.5 AC3).
+ */
 export interface SceneState {
   readonly demandSpike: DemandSpike | null;
   readonly pulse: Pulse | null;
@@ -221,16 +231,13 @@ const FILTER_STAGE_KINDS: ReadonlySet<EventKind> = new Set(["test", "survive", "
  */
 function filterReadoutFor(log: readonly EngineEvent[], pulse: Pulse): FilterReadout | null {
   if (!FILTER_STAGE_KINDS.has(pulse.kind)) return null;
-  for (const event of log) {
-    if (event.kind === "test" && event.elementId === pulse.elementId) {
-      return {
-        elementId: pulse.elementId,
-        text: event.predicate.replace(/o\.total/, String(event.input.total)),
-        passed: event.output,
-      };
-    }
-  }
-  return null;
+  const test = findElementEvent(log, "test", pulse.elementId);
+  if (!test) return null;
+  return {
+    elementId: pulse.elementId,
+    text: test.predicate.replace(/o\.total/, String(test.input.total)),
+    passed: test.output,
+  };
 }
 
 /**

@@ -1,10 +1,10 @@
 "use client";
 
 import { Html } from "@react-three/drei";
-import { useAppStore } from "@/store/appStore";
 import { BIN_UNIT_HEIGHT, binPosition } from "../geometry";
 import { regionGlyph, regionHue } from "../encoding";
-import { projectScene, type BinFill } from "../projection";
+import { type BinFill } from "../projection";
+import { useScene } from "./useScene";
 
 /**
  * One region bin (S1.9): a tower at the region's bin anchor whose height is
@@ -54,10 +54,7 @@ function BinTower({ fill }: { fill: BinFill }) {
  * the run the heights are exactly the engine's grouping counts (== oracle, AC2).
  */
 export function RegionBins() {
-  const log = useAppStore((s) => s.eventLog);
-  const playhead = useAppStore((s) => s.playhead);
-  const reducedMotion = useAppStore((s) => s.reducedMotion);
-  const { bins } = projectScene(log, playhead, { reducedMotion });
+  const { bins } = useScene();
 
   return (
     <>
