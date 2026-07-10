@@ -73,6 +73,63 @@
   outline: 2px solid #6ea8ff;
 }
 
+/* ── Pipeline controls (S2.4) ───────────────────────────────────────────── */
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  background: rgba(10, 14, 24, 0.72);
+  border-bottom: 1px solid rgba(90, 120, 180, 0.2);
+}
+
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.segLabel {
+  font: 600 0.7rem "Roboto", ui-sans-serif, system-ui;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-right: 0.15rem;
+}
+
+.segOn,
+.segOff {
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(90, 120, 180, 0.35);
+  font: 500 0.78rem "Roboto Mono", ui-monospace, monospace;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease;
+}
+.segOff {
+  background: transparent;
+  color: #93a3bf;
+}
+.segOff:hover {
+  background: rgba(90, 130, 200, 0.14);
+  color: #cfe0ff;
+}
+.segOn {
+  background: rgba(90, 130, 210, 0.28);
+  color: #eaf1ff;
+  border-color: #6ea8ff;
+}
+.segOn:focus-visible,
+.segOff:focus-visible {
+  outline: 2px solid #6ea8ff;
+  outline-offset: 2px;
+}
+
 /* ── Code panel ─────────────────────────────────────────────────────────── */
 
 .code {
