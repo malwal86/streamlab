@@ -14,6 +14,7 @@ import { FilterReadout } from "./FilterReadout";
 import { RegionBins } from "./RegionBins";
 import { FoundLatch } from "./FoundLatch";
 import { ParallelFork } from "./ParallelFork";
+import { ParallelBins } from "./ParallelBins";
 
 /**
  * The **source stack** (S1.4 → S2.3): one dot per source element, stacked vertically
@@ -102,9 +103,14 @@ export function ConduitScene() {
           <FilterReadout />
         </>
       )}
-      {parallel && <ParallelFork />}
+      {parallel && (
+        <>
+          <ParallelFork />
+          <ParallelBins />
+        </>
+      )}
 
-      <RegionBins />
+      {!parallel && <RegionBins />}
       <AutoPlay />
 
       <OrbitControls enablePan={false} enableDamping dampingFactor={0.1} target={[1, 0.4, 0]} />

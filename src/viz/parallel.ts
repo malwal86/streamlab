@@ -17,7 +17,9 @@
  * partial bins and the merge beat.
  */
 import { type EngineEvent, type EventKind, type SplitNode } from "@/engine/domain/event";
+import { REGIONS, type Region } from "@/engine/domain/order";
 import { stageX, type StageId } from "./geometry";
+import { type BinFill } from "./projection";
 
 /** Vertical spacing between adjacent lane conduits — lanes fan out along y. */
 export const LANE_Y_SPACING = 2.4;
@@ -206,3 +208,95 @@ const LANE_PULSE_CAPTION: Partial<Record<EventKind, string>> = {
   route: "groupingBy routes to the lane's bin",
   accumulate: "accumulate into the lane's private bin",
 };
+
+// ── S3.5: private partial bins + the combiner merge ─────────────────────────
+//
+// Each lane fills its **own** partial bins as its `accumulate` beats play; the
+// bins stay private per lane until the `combine` beat, when the partials flow
+// together into the final merged grouping. Both are pure reads of the log, so the
+// per-lane towers never cross-contaminate before the merge (spec §3.6) and the
+// merged towers equal the engine result — and thus the oracle (S3.5 AC2).
+
+/** One lane's partial bin fill: the count in `lane`'s private `region` bin so far. */
+export interface LaneBinFill {
+  readonly lane: string;
+  readonly region: Region;
+  readonly count: number;
+}
+
+/**
+ * The parallel bins at a playhead: the **private** per-lane partials, plus the
+ * **merged** bins once the playhead reaches the `combine` beat. `merged` is `null`
+ * before combine — the visible proof the partials are private until the merge
+ * (AC1) — and, from combine on, the final grouping the engine reported (AC2).
+ * `mergeProgress` tweens `0 → 1` across the combine beat so the R3F merge animation
+ * can flow the partials into the center (spec §3.4).
+ */
+export interface ParallelBins {
+  readonly perLane: readonly LaneBinFill[];
+  readonly merged: readonly BinFill[] | null;
+  readonly mergeProgress: number;
+}
+
+/** The index of the log's `combine` beat, or -1 if the playhead-run has none yet. */
+function combineIndexOf(log: readonly EngineEvent[]): number {
+  return log.findIndex((e) => e.kind === "combine");
+}
+
+/**
+ * Project the parallel bins at `(log, playhead)` (S3.5). Sums each lane's own
+ * `accumulate` events up to the playhead into its private partial bins — the active
+ * accumulate growing by the fraction (or in full under `reducedMotion`) — and, once
+ * the playhead crosses the `combine` beat, exposes the merged bins the combiner
+ * reported. Pure over the log: the per-lane towers are exactly the lane's
+ * accumulates, and the merged towers are exactly `combine.merged` (== oracle).
+ */
+export function parallelBins(
+  log: readonly EngineEvent[],
+  playhead: number,
+  options: { readonly reducedMotion?: boolean } = {},
+): ParallelBins {
+  const lanes = forkLayout(log).map((l) => l.lane);
+  if (lanes.length === 0 || log.length === 0) {
+    return { perLane: [], merged: null, mergeProgress: 0 };
+  }
+  const { reducedMotion = false } = options;
+  const clamped = clamp(playhead, 0, log.length - 1);
+  const index = Math.floor(clamped);
+  const frac = reducedMotion ? 1 : clamped - index;
+
+  // Private per-lane partial counts up to the playhead (active accumulate grows in).
+  const counts = new Map<string, Map<Region, number>>();
+  for (let i = 0; i <= index; i += 1) {
+    const event = log[i]!;
+    if (event.kind !== "accumulate" || event.lane === undefined) continue;
+    const laneCounts = counts.get(event.lane) ?? new Map<Region, number>();
+    counts.set(event.lane, laneCounts);
+    const contribution = i === index ? frac : 1;
+    laneCounts.set(event.key, (laneCounts.get(event.key) ?? 0) + contribution);
+  }
+  const perLane: LaneBinFill[] = [];
+  for (const lane of lanes) {
+    const laneCounts = counts.get(lane);
+    for (const region of REGIONS) {
+      perLane.push({ lane, region, count: laneCounts?.get(region) ?? 0 });
+    }
+  }
+
+  // Merged bins appear only once the playhead reaches combine — private until then.
+  const combineIndex = combineIndexOf(log);
+  let merged: readonly BinFill[] | null = null;
+  let mergeProgress = 0;
+  if (combineIndex >= 0 && index >= combineIndex) {
+    mergeProgress = index > combineIndex ? 1 : frac;
+    const combine = log[combineIndex]!;
+    if (combine.kind === "combine") {
+      merged = REGIONS.map((region) => ({
+        region,
+        count: combine.merged.find((b) => b.key === region)?.count ?? 0,
+      }));
+    }
+  }
+
+  return { perLane, merged, mergeProgress };
+}
