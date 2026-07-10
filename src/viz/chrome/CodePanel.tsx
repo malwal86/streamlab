@@ -11,27 +11,36 @@ interface CodeLine {
   readonly code: string;
 }
 
-/** The shared `filter → map` head both slices run before their terminal. */
+/** The shared `filter → map` head both slices run after the source. */
 const HEAD: readonly CodeLine[] = [
-  { stage: "source", code: "orders.stream()" },
   { stage: "filter", code: "    .filter(o -> o.total > 100)" },
   { stage: "map", code: "    .map(Order::applyDiscount)" },
 ];
 
 /**
- * The pipeline source for a config (S2.4). Slice A ends in the grouping collector;
- * Slice B ends in the selected short-circuit terminal (`findFirst()` / `findAny()`).
- * The terminal line keeps the `"collect"` stage key so it lights on that slice's
- * terminal events — `route`/`accumulate` for A, `found`/`shortcircuit` for B — via
- * the same `activeStageFor` mapping. So the panel always shows the *actual* pipeline
- * the engine just ran, and the right line lights as it runs.
+ * The pipeline source for a config (S2.4 → S4.4). The source line is
+ * `stream()` sequentially and `parallelStream()` under multithread — so the panel
+ * names the actual traversal the engine ran, the very thing that makes `findFirst` ≠
+ * `findAny` (parallel) rather than identical (sequential). Slice A ends in the grouping
+ * collector; Slice B ends in the selected short-circuit terminal (`findFirst()` /
+ * `findAny()`). The terminal line keeps the `"collect"` stage key so it lights on that
+ * slice's terminal events — `route`/`accumulate` for A, `found`/`shortcircuit`/`cancel`
+ * for B — via the same `activeStageFor` mapping.
  */
-function linesFor(slice: Config["slice"], terminal: Config["terminal"]): readonly CodeLine[] {
+function linesFor(
+  slice: Config["slice"],
+  terminal: Config["terminal"],
+  mode: Config["mode"],
+): readonly CodeLine[] {
+  const sourceLine: CodeLine = {
+    stage: "source",
+    code: mode === "parallel" ? "orders.parallelStream()" : "orders.stream()",
+  };
   const terminalLine: CodeLine =
     slice === "A"
       ? { stage: "collect", code: "    .collect(groupingBy(Order::region))" }
       : { stage: "collect", code: `    .${terminal}()` };
-  return [...HEAD, terminalLine];
+  return [sourceLine, ...HEAD, terminalLine];
 }
 
 /**
@@ -43,10 +52,11 @@ function linesFor(slice: Config["slice"], terminal: Config["terminal"]): readonl
 export function CodePanel() {
   const slice = useAppStore((s) => s.config.slice);
   const terminal = useAppStore((s) => s.config.terminal);
+  const mode = useAppStore((s) => s.config.mode);
   const log = useAppStore((s) => s.eventLog);
   const playhead = useAppStore((s) => s.playhead);
   const active = activeStageFor(log, playhead);
-  const lines = linesFor(slice, terminal);
+  const lines = linesFor(slice, terminal, mode);
 
   return (
     <pre className={styles.code} aria-label="Pipeline source">

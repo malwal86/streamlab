@@ -27,6 +27,7 @@ const STAGE_OF_KIND: Partial<Record<EventKind, PipelineStage>> = {
   accumulate: "collect",
   found: "collect", // Slice B: the terminal latches — its line lights (S2.4)
   shortcircuit: "collect", // Slice B: the terminal ends early — still the terminal line
+  cancel: "collect", // Slice B parallel: the terminal cancels the outrun lanes (S4.4)
 };
 
 /**
