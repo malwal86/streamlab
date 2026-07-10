@@ -15,6 +15,7 @@ import { RegionBins } from "./RegionBins";
 import { FoundLatch } from "./FoundLatch";
 import { ParallelFork } from "./ParallelFork";
 import { ParallelBins } from "./ParallelBins";
+import { PostFx } from "./PostFx";
 
 /**
  * The **source stack** (S1.4 → S2.3): one dot per source element, stacked vertically
@@ -112,6 +113,7 @@ export function ConduitScene() {
 
       {!parallel && <RegionBins />}
       <AutoPlay />
+      <PostFx />
 
       <OrbitControls enablePan={false} enableDamping dampingFactor={0.1} target={[1, 0.4, 0]} />
     </>
