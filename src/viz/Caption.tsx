@@ -2,6 +2,7 @@
 
 import { useAppStore } from "@/store/appStore";
 import { captionFor } from "./projection";
+import { forkLayout, parallelCaptionFor } from "./parallel";
 
 /**
  * The beat caption (S1.5) — a DOM overlay (non-conduit UI stays DOM, spec §3.1)
@@ -13,7 +14,9 @@ import { captionFor } from "./projection";
 export function Caption() {
   const log = useAppStore((s) => s.eventLog);
   const playhead = useAppStore((s) => s.playhead);
-  const caption = captionFor(log, playhead);
+  // A parallel run (has a `fork`) narrates its own beats — fork, lane pulls, combine.
+  const caption =
+    forkLayout(log).length > 0 ? parallelCaptionFor(log, playhead) : captionFor(log, playhead);
 
   return (
     <output

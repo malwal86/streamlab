@@ -1,8 +1,10 @@
 "use client";
 
 import { Html, OrbitControls } from "@react-three/drei";
+import { useAppStore } from "@/store/appStore";
 import { CONDUIT_NODES, axonSegments, conduitNode } from "../geometry";
 import { type SourceState } from "../projection";
+import { forkLayout } from "../parallel";
 import { useScene } from "./useScene";
 import { Neuron } from "./Neuron";
 import { Axon } from "./Axon";
@@ -11,6 +13,7 @@ import { AutoPlay } from "./AutoPlay";
 import { FilterReadout } from "./FilterReadout";
 import { RegionBins } from "./RegionBins";
 import { FoundLatch } from "./FoundLatch";
+import { ParallelFork } from "./ParallelFork";
 
 /**
  * The **source stack** (S1.4 → S2.3): one dot per source element, stacked vertically
@@ -73,6 +76,11 @@ function SourceStack({ source }: { source: SourceState }) {
  */
 export function ConduitScene() {
   const { source } = useScene();
+  // A `fork` in the log means this is a parallel run — render the forked lane
+  // conduits (S3.4) in place of the single sequential trunk + heartbeat, so the two
+  // never double-render. Bins are shared: they grow from the (per-lane) accumulate
+  // events in both modes; S3.5 makes the parallel bins visibly private-per-lane.
+  const parallel = useAppStore((s) => forkLayout(s.eventLog).length > 0);
 
   return (
     <>
@@ -80,18 +88,23 @@ export function ConduitScene() {
       <pointLight position={[0, 6, 9]} intensity={140} />
       <pointLight position={[-8, -4, 6]} intensity={40} color="#3b6cff" />
 
-      {axonSegments().map((axon) => (
-        <Axon key={`${axon.from}-${axon.to}`} axon={axon} />
-      ))}
-      {CONDUIT_NODES.map((node) => (
-        <Neuron key={node.id} id={node.id} />
-      ))}
-      <SourceStack source={source} />
-      <RegionBins />
-      <FoundLatch />
+      {!parallel && (
+        <>
+          {axonSegments().map((axon) => (
+            <Axon key={`${axon.from}-${axon.to}`} axon={axon} />
+          ))}
+          {CONDUIT_NODES.map((node) => (
+            <Neuron key={node.id} id={node.id} />
+          ))}
+          <SourceStack source={source} />
+          <FoundLatch />
+          <Heartbeat />
+          <FilterReadout />
+        </>
+      )}
+      {parallel && <ParallelFork />}
 
-      <Heartbeat />
-      <FilterReadout />
+      <RegionBins />
       <AutoPlay />
 
       <OrbitControls enablePan={false} enableDamping dampingFactor={0.1} target={[1, 0.4, 0]} />
