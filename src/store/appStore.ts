@@ -61,11 +61,11 @@ interface StoreState {
 }
 
 /**
- * Default playback rate — events per second when playing (S1.10). Set to 0.75× the
- * original 4 ev/s so each element dwells long enough to read its stop at every stage
+ * Default playback rate — events per second when playing (S1.10). Halved from the
+ * previous 3 ev/s so each element dwells even longer to read its stop at every stage
  * (source → filter → map → terminal) as the stop-and-go `stationEase` plays out.
  */
-export const DEFAULT_SPEED = 3;
+export const DEFAULT_SPEED = 1.5;
 
 export const useAppStore = create<StoreState>((set) => {
   /**
