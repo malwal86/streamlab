@@ -1,9 +1,8 @@
 "use client";
 
 import { Html } from "@react-three/drei";
-import { useAppStore } from "@/store/appStore";
 import { conduitNode } from "../geometry";
-import { projectScene } from "../projection";
+import { useScene } from "./useScene";
 
 /**
  * The filter's threshold readout (S1.7): a DOM chip above the filter neuron showing
@@ -13,10 +12,7 @@ import { projectScene } from "../projection";
  * `test`, never a re-derived one.
  */
 export function FilterReadout() {
-  const log = useAppStore((s) => s.eventLog);
-  const playhead = useAppStore((s) => s.playhead);
-  const reducedMotion = useAppStore((s) => s.reducedMotion);
-  const { filterReadout } = projectScene(log, playhead, { reducedMotion });
+  const { filterReadout } = useScene();
   if (!filterReadout) return null;
 
   const node = conduitNode("filter");

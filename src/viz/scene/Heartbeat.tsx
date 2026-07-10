@@ -1,8 +1,7 @@
 "use client";
 
-import { useAppStore } from "@/store/appStore";
-import { projectScene } from "../projection";
 import { PulseMesh } from "./PulseMesh";
+import { useScene } from "./useScene";
 
 /**
  * The demand heartbeat (S1.5): renders the two signals the projection reports at
@@ -19,10 +18,7 @@ import { PulseMesh } from "./PulseMesh";
  * exactly what the log says, and scrubbing the playhead moves it deterministically.
  */
 export function Heartbeat() {
-  const log = useAppStore((s) => s.eventLog);
-  const playhead = useAppStore((s) => s.playhead);
-  const reducedMotion = useAppStore((s) => s.reducedMotion);
-  const { demandSpike, pulse } = projectScene(log, playhead, { reducedMotion });
+  const { demandSpike, pulse } = useScene();
 
   return (
     <>
