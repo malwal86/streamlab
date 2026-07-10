@@ -4,8 +4,8 @@
  * (AC2). The "0 functions" deploy (AC3) is a build property (static export), covered
  * by CI's `next build`, not a render test.
  */
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
 import { Landing } from "./Landing";
 
 describe("S5.4 landing frames the thesis (AC1)", () => {
@@ -29,9 +29,11 @@ describe("S5.4 landing frames the thesis (AC1)", () => {
 });
 
 describe("S5.4 landing enters the demo (AC2)", () => {
-  it("offers a call-to-action linking to the #demo section", () => {
-    render(<Landing />);
-    const cta = screen.getByRole("link", { name: /launch the live demo/i });
-    expect(cta).toHaveAttribute("href", "#demo");
+  it("offers a call-to-action that launches the demo on click", () => {
+    const onLaunch = vi.fn();
+    render(<Landing onLaunch={onLaunch} />);
+    const cta = screen.getByRole("button", { name: /launch the live demo/i });
+    fireEvent.click(cta);
+    expect(onLaunch).toHaveBeenCalledTimes(1);
   });
 });

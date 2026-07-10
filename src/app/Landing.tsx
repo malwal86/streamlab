@@ -7,11 +7,12 @@ import styles from "./landing.module.css";
  * demand flows *retrograde* from the terminal to the source. The thesis is legible in
  * under ten seconds of reading (AC1); the CTA drops straight into the live demo (AC2).
  *
- * Pure static markup — no client hooks, no engine — so it prerenders into the static
- * export with zero serverless functions (AC3). The CTA is a plain in-page anchor to
- * the `#demo` section, so "entering the demo" needs no JS.
+ * No engine, no store — so it prerenders into the static export with zero serverless
+ * functions (AC3). The hero holds the screen on its own; "Launch the live demo" calls
+ * `onLaunch`, and the parent swaps the landing out for the demo (a client view switch,
+ * not a scroll), so the demo mounts fresh only when the visitor asks for it.
  */
-export function Landing() {
+export function Landing({ onLaunch }: { onLaunch?: () => void }) {
   return (
     <section className={styles.landing} aria-label="Introduction">
       <p className={styles.eyebrow}>Portfolio · Java Stream semantics, visualized as a live flow-map</p>
@@ -32,9 +33,9 @@ export function Landing() {
         never show an outcome the engine did not actually produce.
       </p>
 
-      <a className={styles.cta} href="#demo">
+      <button type="button" className={styles.cta} onClick={onLaunch}>
         Launch the live demo <span aria-hidden>→</span>
-      </a>
+      </button>
 
       <p className={styles.subcta}>
         Sequential &amp; parallel · grouping &amp; short-circuit · plays on load, no setup.

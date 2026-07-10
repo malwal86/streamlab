@@ -167,6 +167,96 @@ export function activeLaneSpike(
 }
 
 /**
+ * The in-flight spike for **one lane** at a lane-local fractional position — the core
+ * {@link activeLaneSpike} builds on, reused by {@link parallelLaneSpikes} to animate
+ * every lane concurrently. `laneIndices` are the lane's own event positions in the
+ * (globally-ordered) log; `localFloat` indexes *into that list*, so a lane advances
+ * through its own beats independent of how the log linearized the others. Returns
+ * `null` for a lane parked on a non-motion beat (e.g. `cancel`).
+ */
+function laneSpikeAtLocal(
+  log: readonly EngineEvent[],
+  laneIndices: readonly number[],
+  localFloat: number,
+  y: number,
+  reducedMotion: boolean,
+): LaneSpike | null {
+  const m = laneIndices.length;
+  if (m === 0) return null;
+  const li = clamp(Math.floor(localFloat), 0, m - 1);
+  const frac = reducedMotion ? 0 : clamp(localFloat - li, 0, 1);
+  const current = log[laneIndices[li]!]!;
+  if (current.lane === undefined) return null;
+
+  if (current.kind === "lane-demand") {
+    return {
+      lane: current.lane,
+      kind: "demand",
+      x: lerp(stageX("terminal"), stageX("source"), frac),
+      y,
+      progress: frac,
+    };
+  }
+  const fromStage = FORWARD_STATION[current.kind];
+  if (fromStage === undefined || current.elementId === undefined) return null; // cancel, etc.
+  const fromX = stageX(fromStage);
+  // Travel toward the next station only if the lane's *own* next event continues this
+  // element's journey; otherwise hold at the current station.
+  const next = li + 1 < m ? log[laneIndices[li + 1]!] : undefined;
+  const nextStage =
+    next && next.elementId === current.elementId ? FORWARD_STATION[next.kind] : undefined;
+  const toX = nextStage !== undefined ? stageX(nextStage) : fromX;
+  return {
+    lane: current.lane,
+    kind: "pulse",
+    x: lerp(fromX, toX, frac),
+    y,
+    progress: frac,
+    elementId: current.elementId,
+    forwardKind: current.kind,
+  };
+}
+
+/**
+ * Every lane's in-flight spike at a playhead — the **concurrent** projection (one
+ * entry per lane, distinct lanes). Real parallel streams run each ForkJoin lane at
+ * once, but the engine records a single totally-ordered log; walking that one order
+ * (`activeLaneSpike`) shows one lane at a time. Here each lane instead advances on a
+ * *shared normalized clock*: `progress = playhead / (length - 1)` maps into every
+ * lane's own event subsequence, so all lanes sweep their chunk together and finish
+ * together. Still a pure read of the log — a lane only ever shows its own real events,
+ * in their real order; only the cross-lane timing is made concurrent (the log's linear
+ * order is a recording artifact, not wall-clock). Cancelled/parked lanes contribute no
+ * spike. Empty for a sequential log (no fork).
+ */
+export function parallelLaneSpikes(
+  log: readonly EngineEvent[],
+  playhead: number,
+  options: { readonly reducedMotion?: boolean } = {},
+): LaneSpike[] {
+  const lanes = forkLayout(log);
+  if (lanes.length === 0 || log.length === 0) return [];
+  const { reducedMotion = false } = options;
+  const progress = clamp(playhead, 0, log.length - 1) / Math.max(1, log.length - 1);
+
+  const indicesByLane = new Map<string, number[]>(lanes.map((l) => [l.lane, []]));
+  log.forEach((event, i) => {
+    if (event.lane !== undefined && indicesByLane.has(event.lane)) {
+      indicesByLane.get(event.lane)!.push(i);
+    }
+  });
+
+  const spikes: LaneSpike[] = [];
+  for (const lane of lanes) {
+    const indices = indicesByLane.get(lane.lane)!;
+    if (indices.length === 0) continue;
+    const spike = laneSpikeAtLocal(log, indices, progress * (indices.length - 1), lane.y, reducedMotion);
+    if (spike) spikes.push(spike);
+  }
+  return spikes;
+}
+
+/**
  * In-flight spikes **per lane** at a playhead — 0 or 1 for each lane, keyed by lane
  * id. The guardrail the S3.4 projection test samples across the whole log: no lane's
  * load ever exceeds 1 (spec §3.6 parallel single-file, AC3). A pure read: at most one
@@ -207,7 +297,9 @@ export function parallelCaptionFor(log: readonly EngineEvent[], playhead: number
   if (current.kind === "cancel") {
     return `lane ${current.lane ?? ""} cancelled · ${current.reason}`.replace("  ", " ");
   }
-  const spike = activeLaneSpike(log, playhead);
+  const spikes = parallelLaneSpikes(log, playhead);
+  if (spikes.length > 1) return `${spikes.length} lanes running concurrently`;
+  const spike = spikes[0];
   if (spike?.kind === "demand") return "lane pulls the next element";
   if (spike?.kind === "pulse") return LANE_PULSE_CAPTION[spike.forwardKind ?? "emit"] ?? "";
   return "";

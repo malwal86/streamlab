@@ -63,12 +63,15 @@
   align-self: flex-start;
   margin-top: 0.6rem;
   padding: 0.8rem 1.5rem;
+  border: none;
   border-radius: 0.7rem;
   background: linear-gradient(96deg, #2b6cff, #7d4dff);
   color: #fff;
+  font-family: inherit;
   font-size: 1.05rem;
   font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
   box-shadow: 0 8px 24px rgba(43, 108, 255, 0.28);
   transition:
     transform 140ms ease,
