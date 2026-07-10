@@ -1,0 +1,102 @@
+.landing {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.1rem;
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 2rem 2rem 3rem;
+  background: radial-gradient(circle at 50% 30%, #0d1526 0%, var(--bg) 68%);
+}
+
+.eyebrow {
+  margin: 0;
+  color: #7f9dd6;
+  font:
+    600 0.8rem/1.4 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.thesis {
+  margin: 0;
+  font-size: clamp(2.4rem, 6vw, 4.2rem);
+  font-weight: 680;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+}
+
+.wiredBack {
+  background: linear-gradient(96deg, #5aa0ff, #c77dff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.lead {
+  margin: 0;
+  max-width: 44rem;
+  font-size: clamp(1.05rem, 2.2vw, 1.4rem);
+  line-height: 1.5;
+  color: var(--fg);
+}
+
+.differentiator {
+  margin: 0;
+  max-width: 44rem;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.lead strong,
+.differentiator strong {
+  color: #cfe0ff;
+  font-weight: 600;
+}
+
+.cta {
+  align-self: flex-start;
+  margin-top: 0.6rem;
+  padding: 0.8rem 1.5rem;
+  border-radius: 0.7rem;
+  background: linear-gradient(96deg, #2b6cff, #7d4dff);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(43, 108, 255, 0.35);
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(43, 108, 255, 0.45);
+}
+
+.cta:focus-visible {
+  outline: 2px solid #cfe0ff;
+  outline-offset: 3px;
+}
+
+.subcta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Motion is a nicety, not meaning — honor the reduced-motion preference (spec §3.7). */
+@media (prefers-reduced-motion: reduce) {
+  .cta {
+    transition: none;
+  }
+  .cta:hover {
+    transform: none;
+  }
+}
