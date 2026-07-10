@@ -19,7 +19,7 @@
 import { type EngineEvent, type EventKind, type SplitNode } from "@/engine/domain/event";
 import { REGIONS, type Region } from "@/engine/domain/order";
 import { stageX, type StageId } from "./geometry";
-import { type BinFill } from "./projection";
+import { stationEase, type BinFill } from "./projection";
 
 /** Vertical spacing between adjacent lane conduits — lanes fan out along y. */
 export const LANE_Y_SPACING = 2.4;
@@ -155,10 +155,12 @@ export function activeLaneSpike(
       ? FORWARD_STATION[next.kind]
       : undefined;
   const toX = nextStage !== undefined ? stageX(nextStage) : fromX;
+  // Eased so the pulse marks a distinct stop at each station (the demand spike above
+  // stays linear); progress stays raw so the "one spike per lane" guardrail is exact.
   return {
     lane: current.lane,
     kind: "pulse",
-    x: lerp(fromX, toX, frac),
+    x: lerp(fromX, toX, stationEase(frac)),
     y,
     progress: frac,
     elementId: current.elementId,
@@ -206,10 +208,11 @@ function laneSpikeAtLocal(
   const nextStage =
     next && next.elementId === current.elementId ? FORWARD_STATION[next.kind] : undefined;
   const toX = nextStage !== undefined ? stageX(nextStage) : fromX;
+  // Eased travel so each lane's pulse stops at every station (demand stays linear).
   return {
     lane: current.lane,
     kind: "pulse",
-    x: lerp(fromX, toX, frac),
+    x: lerp(fromX, toX, stationEase(frac)),
     y,
     progress: frac,
     elementId: current.elementId,

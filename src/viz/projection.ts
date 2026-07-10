@@ -49,6 +49,22 @@ function clamp(v: number, min: number, max: number): number {
 }
 
 /**
+ * The **stop-at-every-station** easing for a forward pulse (smootherstep,
+ * `6t⁵−15t⁴+10t³`). Each beat carries the element from the station it currently
+ * rests on to the next one; feeding the beat fraction through this curve makes the
+ * pulse *decelerate to a near-halt as it arrives* and *accelerate away as it leaves*
+ * — its velocity is zero at both ends (1st and 2nd derivatives vanish). Because
+ * beats abut, that reads as the element **marking a distinct stop at each step**
+ * (source → filter → map → terminal) instead of sliding straight through. Still
+ * strictly monotonic (0→1), so every position/size interpolation stays smooth and
+ * reversible. The retrograde demand spike keeps its own linear flight.
+ */
+export function stationEase(t: number): number {
+  const u = clamp(t, 0, 1);
+  return u * u * u * (u * (u * 6 - 15) + 10);
+}
+
+/**
  * The conduit stage each forward-journey event parks the pulse at — the "keyframe
  * stations" the pulse interpolates between (spec §3.2). `emit` releases at the
  * source; `test`/`survive`/`die` happen at the filter; `transform` at the map;
@@ -388,18 +404,21 @@ export function projectScene(
     };
   }
 
-  // Forward element pulse.
+  // Forward element pulse. Its travel through the beat is eased so the pulse marks a
+  // visible stop at each station (stationEase) rather than gliding through linearly;
+  // reduced motion still snaps (travelT = 0). The demand spike above stays linear.
   const fromX = forwardStationX(current.kind);
   if (fromX !== null && current.elementId !== undefined) {
     const payload = emitPayloadOf(log, current.elementId);
     if (payload) {
+      const travelT = reducedMotion ? 0 : stationEase(frac);
       const base = {
         elementId: current.elementId,
         kind: current.kind,
         region: payload.region,
         // The morphing total: original pre-map, shrinking across the transform beat,
         // discounted after (S1.8). Snaps (no gradual shrink) under reduced motion.
-        total: currentTotal(log, current, current.elementId, payload.total, posT),
+        total: currentTotal(log, current, current.elementId, payload.total, travelT),
       };
       const [binX, , binZ] = binPosition(payload.region);
 
@@ -407,14 +426,15 @@ export function projectScene(
       if (current.kind === "die") {
         // Rejected *at the filter* (spec §3.6): sinks into the void, never advancing
         // in x — the guarantee no pulse renders past the filter after a `die` (AC2).
-        pulse = { ...base, x: fromX, y: lerp(0, -DIE_DEPTH, posT), z: 0, opacity: 1 - posT };
+        // It dwells at the filter, then drops (stationEase) — the "dropped → goes down".
+        pulse = { ...base, x: fromX, y: lerp(0, -DIE_DEPTH, travelT), z: 0, opacity: 1 - travelT };
       } else if (current.kind === "route") {
         // On `route` the classifier picks the bin — the pulse flies off the main axis
         // toward its region bin (S1.9): x terminal→bin, z 0→binZ.
-        pulse = { ...base, x: lerp(stageX("terminal"), binX, posT), y: 0, z: lerp(0, binZ, posT), opacity: 1 };
+        pulse = { ...base, x: lerp(stageX("terminal"), binX, travelT), y: 0, z: lerp(0, binZ, travelT), opacity: 1 };
       } else if (current.kind === "accumulate") {
         // Landed at the bin, merging in as the tower grows over the beat.
-        pulse = { ...base, x: binX, y: 0, z: binZ, opacity: 1 - posT };
+        pulse = { ...base, x: binX, y: 0, z: binZ, opacity: 1 - travelT };
       } else if (current.kind === "found") {
         // Slice B: the survivor reaches the terminal and *latches* — it holds there,
         // fully lit, rather than dispersing to a bin (the FOUND payoff, S2.2).
@@ -425,7 +445,7 @@ export function projectScene(
         const nextX =
           next && next.elementId === current.elementId ? forwardStationX(next.kind) : null;
         const toX = nextX ?? fromX;
-        pulse = { ...base, x: lerp(fromX, toX, posT), y: 0, z: 0, opacity: 1 };
+        pulse = { ...base, x: lerp(fromX, toX, travelT), y: 0, z: 0, opacity: 1 };
       }
 
       return {

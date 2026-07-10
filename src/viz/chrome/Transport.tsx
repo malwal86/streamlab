@@ -88,10 +88,10 @@ export function Transport() {
           onChange={(e) => setSpeed(Number(e.target.value))}
           aria-label="Playback speed"
         >
-          <option value={2}>0.5×</option>
-          <option value={4}>1×</option>
-          <option value={8}>2×</option>
-          <option value={16}>4×</option>
+          <option value={1.5}>0.5×</option>
+          <option value={3}>1×</option>
+          <option value={6}>2×</option>
+          <option value={12}>4×</option>
         </select>
       </label>
     </div>
