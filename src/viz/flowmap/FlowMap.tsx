@@ -308,15 +308,40 @@ function drawSourceTray(
     const hue = REGION_HUE[order.region];
     const pulled = emittedSoFar.has(order.id);
     const dark = shortCircuited && !emittedAll.has(order.id);
+    const cy = y + cellH / 2;
+
+    // Cell slot. A consumed order reads as an emptied, ghosted slot — a nearly
+    // clear fill and a dashed outline — so "already pulled" is unmistakable
+    // against the solid, saturated cells still waiting to be consumed.
     roundRect(ctx, x, y, cellW, cellH, 6);
-    ctx.fillStyle = dark ? "rgba(120,130,150,0.06)" : pulled ? alpha(hue, 0.1) : alpha(hue, 0.2);
+    ctx.fillStyle = dark ? "rgba(120,130,150,0.05)" : pulled ? alpha(hue, 0.05) : alpha(hue, 0.22);
     ctx.fill();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = dark ? FAINT : pulled ? alpha(hue, 0.25) : alpha(hue, 0.6);
+    ctx.lineWidth = pulled && !dark ? 1 : 1.25;
+    ctx.strokeStyle = dark ? FAINT : pulled ? alpha(hue, 0.4) : alpha(hue, 0.7);
+    if (pulled && !dark) ctx.setLineDash([3, 3]);
     ctx.stroke();
-    ctx.fillStyle = dark ? FAINT : pulled ? MUTED : hue;
+    ctx.setLineDash([]);
+
+    // Value.
+    ctx.fillStyle = dark ? FAINT : pulled ? FAINT : hue;
     ctx.font = `${pulled ? "500" : "700"} 11px ${MONO}`;
-    ctx.fillText(`$${order.total}`, o.x, y + cellH / 2 + 4);
+    const label = `$${order.total}`;
+    const labelX = pulled && !dark ? o.x - 5 : o.x; // nudge to make room for the ✓
+    ctx.fillText(label, labelX, cy + 4);
+
+    // Consumed marker: strike the value through and stamp a check in the corner.
+    if (pulled && !dark) {
+      const w = ctx.measureText(label).width;
+      ctx.strokeStyle = alpha(hue, 0.75);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(labelX - w / 2 - 2, cy);
+      ctx.lineTo(labelX + w / 2 + 2, cy);
+      ctx.stroke();
+      ctx.fillStyle = hue;
+      ctx.font = `700 10px ${MONO}`;
+      ctx.fillText("✓", x + cellW - 9, cy + 3.5);
+    }
     y += cellH + gap;
   }
 }
