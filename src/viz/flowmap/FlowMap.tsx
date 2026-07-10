@@ -8,7 +8,7 @@ import { type Region } from "@/engine/domain/order";
 import { type EngineEvent } from "@/engine/domain/event";
 import { projectScene } from "@/viz/projection";
 import { stageX, type StageId } from "@/viz/geometry";
-import { forkLayout, activeLaneSpike, cancelledLanes } from "@/viz/parallel";
+import { forkLayout, parallelLaneSpikes, cancelledLanes } from "@/viz/parallel";
 import { flowMetrics } from "./metrics";
 import styles from "./flowmap.module.css";
 
@@ -210,10 +210,10 @@ export function FlowMap() {
       drawFound(ctx, scene.found, termX, bandTop);
     }
 
-    // ── in-flight signal (the beat) ───────────────────────────────────────
+    // ── in-flight signals (the beat) ──────────────────────────────────────
     if (parallel) {
-      const spike = activeLaneSpike(log, playhead, { reducedMotion });
-      if (spike) {
+      // Every lane at once — real ForkJoin threads run concurrently.
+      for (const spike of parallelLaneSpikes(log, playhead, { reducedMotion })) {
         const x = geoX(spike.x);
         const y = geoY(spike.y);
         if (spike.kind === "demand") {
