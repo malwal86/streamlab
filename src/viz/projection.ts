@@ -115,6 +115,43 @@ function emitPayloadOf(
   return null;
 }
 
+/** The element's `map` transform (before/after totals), or null if it never mapped (e.g. a reject). */
+function transformOf(
+  log: readonly EngineEvent[],
+  elementId: number,
+): { before: number; after: number } | null {
+  for (const event of log) {
+    if (event.kind === "transform" && event.elementId === elementId) {
+      return { before: event.before, after: event.after };
+    }
+  }
+  return null;
+}
+
+/**
+ * The pulse's total *as of the current beat* — this is where the map size-morph
+ * lives (S1.8). Before the map the total is the emit value; **at** the `transform`
+ * beat it interpolates `before → after` over the fraction (the visible shrink); and
+ * after the map it holds at the discounted `after`. So size and label follow the
+ * discount exactly where `applyDiscount` happens, keyed off the `transform` event's
+ * own before/after (spec §3.3), never a re-computed discount.
+ */
+function currentTotal(
+  log: readonly EngineEvent[],
+  current: EngineEvent,
+  elementId: number,
+  initialTotal: number,
+  frac: number,
+): number {
+  if (current.kind === "transform") {
+    return lerp(current.before, current.after, frac);
+  }
+  if (current.kind === "route" || current.kind === "accumulate") {
+    return transformOf(log, elementId)?.after ?? initialTotal;
+  }
+  return initialTotal; // pre-map beats (emit/test/survive/die) carry the original total
+}
+
 /**
  * What the scene draws at a playhead. Exactly one of `demandSpike`/`pulse` is
  * non-null while a beat is in flight (or both null on a non-heartbeat event) — the
@@ -205,7 +242,9 @@ export function projectScene(log: readonly EngineEvent[], playhead: number): Sce
         elementId: current.elementId,
         kind: current.kind,
         region: payload.region,
-        total: payload.total,
+        // The morphing total: original pre-map, shrinking across the transform beat,
+        // discounted after (S1.8).
+        total: currentTotal(log, current, current.elementId, payload.total, frac),
       };
 
       // A rejected pulse dies *at the filter* (spec §3.6): it never advances in x —
