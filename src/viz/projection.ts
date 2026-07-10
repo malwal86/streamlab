@@ -246,26 +246,41 @@ function filterReadoutFor(log: readonly EngineEvent[], pulse: Pulse): FilterRead
  *
  * Pure and deterministic: the same `(log, playhead)` always yields structurally
  * identical state, so scrubbing is smooth and reversible (AC5).
+ *
+ * `reducedMotion` (S1.11): honor `prefers-reduced-motion` by **snapping** — the
+ * pulse jumps stage-to-stage instead of animating flight (position/size/opacity use
+ * the current event's settled value, no tween), and a bin counts its current
+ * `accumulate` in full. Every event is still represented; the motion is removed, not
+ * the meaning (spec §3.7). The step-list carries the full story regardless.
  */
-export function projectScene(log: readonly EngineEvent[], playhead: number): SceneState {
+export function projectScene(
+  log: readonly EngineEvent[],
+  playhead: number,
+  options: { readonly reducedMotion?: boolean } = {},
+): SceneState {
   if (log.length === 0) return EMPTY_SCENE;
+  const { reducedMotion = false } = options;
 
   const clamped = clamp(playhead, 0, log.length - 1);
   const index = Math.floor(clamped);
   const frac = clamped - index;
+  // Under reduced motion, snap: use 0 for every tween so a beat renders its start
+  // (settled) state and only jumps when the playhead crosses to the next event.
+  const posT = reducedMotion ? 0 : frac;
   const current = log[index]!;
   const next = log[index + 1];
 
   // The bins grow independently of what is in flight — they hold their fill during a
   // demand, and the active region's tower grows across its `accumulate` beat (S1.9).
-  const bins = binsAt(log, index, frac);
+  // Reduced motion counts the current accumulate in full (no growth animation).
+  const bins = binsAt(log, index, reducedMotion ? 1 : frac);
 
   // Retrograde demand spike (terminal → source): the beat's opening pull.
   if (current.kind === "demand") {
     const fromX = stageX("terminal");
     const toX = stageX("source");
     return {
-      demandSpike: { x: lerp(fromX, toX, frac), progress: frac },
+      demandSpike: { x: lerp(fromX, toX, posT), progress: posT },
       pulse: null,
       filterReadout: null,
       bins,
@@ -282,8 +297,8 @@ export function projectScene(log: readonly EngineEvent[], playhead: number): Sce
         kind: current.kind,
         region: payload.region,
         // The morphing total: original pre-map, shrinking across the transform beat,
-        // discounted after (S1.8).
-        total: currentTotal(log, current, current.elementId, payload.total, frac),
+        // discounted after (S1.8). Snaps (no gradual shrink) under reduced motion.
+        total: currentTotal(log, current, current.elementId, payload.total, posT),
       };
       const [binX, , binZ] = binPosition(payload.region);
 
@@ -291,21 +306,21 @@ export function projectScene(log: readonly EngineEvent[], playhead: number): Sce
       if (current.kind === "die") {
         // Rejected *at the filter* (spec §3.6): sinks into the void, never advancing
         // in x — the guarantee no pulse renders past the filter after a `die` (AC2).
-        pulse = { ...base, x: fromX, y: lerp(0, -DIE_DEPTH, frac), z: 0, opacity: 1 - frac };
+        pulse = { ...base, x: fromX, y: lerp(0, -DIE_DEPTH, posT), z: 0, opacity: 1 - posT };
       } else if (current.kind === "route") {
         // On `route` the classifier picks the bin — the pulse flies off the main axis
         // toward its region bin (S1.9): x terminal→bin, z 0→binZ.
-        pulse = { ...base, x: lerp(stageX("terminal"), binX, frac), y: 0, z: lerp(0, binZ, frac), opacity: 1 };
+        pulse = { ...base, x: lerp(stageX("terminal"), binX, posT), y: 0, z: lerp(0, binZ, posT), opacity: 1 };
       } else if (current.kind === "accumulate") {
         // Landed at the bin, merging in as the tower grows over the beat.
-        pulse = { ...base, x: binX, y: 0, z: binZ, opacity: 1 - frac };
+        pulse = { ...base, x: binX, y: 0, z: binZ, opacity: 1 - posT };
       } else {
         // emit/test/survive/transform: travel along the main axis toward the next
         // station while the journey continues; otherwise hold in place.
         const nextX =
           next && next.elementId === current.elementId ? forwardStationX(next.kind) : null;
         const toX = nextX ?? fromX;
-        pulse = { ...base, x: lerp(fromX, toX, frac), y: 0, z: 0, opacity: 1 };
+        pulse = { ...base, x: lerp(fromX, toX, posT), y: 0, z: 0, opacity: 1 };
       }
 
       return { demandSpike: null, pulse, filterReadout: filterReadoutFor(log, pulse), bins };

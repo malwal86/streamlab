@@ -39,6 +39,8 @@ interface StoreState {
   playing: boolean;
   /** Playback rate in events per second (transport speed, S1.10). */
   speed: number;
+  /** Mirror of the `prefers-reduced-motion` media query — the viz snaps when true (S1.11). */
+  reducedMotion: boolean;
 
   // Config actions — each patches one field, then re-runs the engine (R3).
   setSlice: (slice: Config["slice"]) => void;
@@ -54,6 +56,8 @@ interface StoreState {
   togglePlaying: () => void;
   /** Set the playback rate (events per second). */
   setSpeed: (speed: number) => void;
+  /** Sync the reduced-motion preference (from the media-query watcher, S1.11). */
+  setReducedMotion: (reducedMotion: boolean) => void;
 }
 
 /** Default playback rate — events per second when playing (S1.10). */
@@ -78,6 +82,7 @@ export const useAppStore = create<StoreState>((set) => {
     playhead: PLAYHEAD_START,
     playing: true,
     speed: DEFAULT_SPEED,
+    reducedMotion: false,
 
     setSlice: (slice) => applyConfig({ slice }),
     setMode: (mode) => applyConfig({ mode }),
@@ -89,5 +94,6 @@ export const useAppStore = create<StoreState>((set) => {
     setPlaying: (playing) => set({ playing }),
     togglePlaying: () => set((state) => ({ playing: !state.playing })),
     setSpeed: (speed) => set({ speed }),
+    setReducedMotion: (reducedMotion) => set({ reducedMotion }),
   };
 });

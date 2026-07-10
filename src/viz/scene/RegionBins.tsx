@@ -56,7 +56,8 @@ function BinTower({ fill }: { fill: BinFill }) {
 export function RegionBins() {
   const log = useAppStore((s) => s.eventLog);
   const playhead = useAppStore((s) => s.playhead);
-  const { bins } = projectScene(log, playhead);
+  const reducedMotion = useAppStore((s) => s.reducedMotion);
+  const { bins } = projectScene(log, playhead, { reducedMotion });
 
   return (
     <>

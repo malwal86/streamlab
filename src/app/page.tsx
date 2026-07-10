@@ -6,6 +6,7 @@ import { Caption } from "@/viz/Caption";
 import { Transport } from "@/viz/chrome/Transport";
 import { CodePanel } from "@/viz/chrome/CodePanel";
 import { StepList } from "@/viz/chrome/StepList";
+import { useSyncReducedMotion } from "@/viz/useReducedMotion";
 
 // The WebGL canvas is dynamically imported with `ssr: false` so three.js never
 // runs during (static) prerender — the conduit is a client-only concern.
@@ -15,6 +16,8 @@ const ConduitCanvas = dynamic(() => import("@/viz/ConduitCanvas"), {
 });
 
 export default function Home() {
+  useSyncReducedMotion(); // mirror prefers-reduced-motion into the store (S1.11)
+
   return (
     <main className={styles.main}>
       <header className={styles.header}>

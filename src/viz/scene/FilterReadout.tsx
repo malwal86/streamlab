@@ -15,7 +15,8 @@ import { projectScene } from "../projection";
 export function FilterReadout() {
   const log = useAppStore((s) => s.eventLog);
   const playhead = useAppStore((s) => s.playhead);
-  const { filterReadout } = projectScene(log, playhead);
+  const reducedMotion = useAppStore((s) => s.reducedMotion);
+  const { filterReadout } = projectScene(log, playhead, { reducedMotion });
   if (!filterReadout) return null;
 
   const node = conduitNode("filter");

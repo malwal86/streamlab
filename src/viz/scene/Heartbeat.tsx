@@ -21,7 +21,8 @@ import { PulseMesh } from "./PulseMesh";
 export function Heartbeat() {
   const log = useAppStore((s) => s.eventLog);
   const playhead = useAppStore((s) => s.playhead);
-  const { demandSpike, pulse } = projectScene(log, playhead);
+  const reducedMotion = useAppStore((s) => s.reducedMotion);
+  const { demandSpike, pulse } = projectScene(log, playhead, { reducedMotion });
 
   return (
     <>
