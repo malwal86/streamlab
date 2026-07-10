@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import styles from "./page.module.css";
 import { Caption } from "@/viz/Caption";
 import { Transport } from "@/viz/chrome/Transport";
+import { Controls } from "@/viz/chrome/Controls";
 import { CodePanel } from "@/viz/chrome/CodePanel";
 import { StepList } from "@/viz/chrome/StepList";
 import { useSyncReducedMotion } from "@/viz/useReducedMotion";
@@ -37,6 +38,7 @@ export default function Home() {
         </section>
 
         <aside className={styles.sidebar} aria-label="Pipeline and event log">
+          <Controls />
           <CodePanel />
           <StepList />
         </aside>

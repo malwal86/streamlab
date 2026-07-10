@@ -7,14 +7,16 @@
 import { render, screen, fireEvent, within, act } from "@testing-library/react";
 import { describe, it, expect, beforeEach } from "vitest";
 import { PLAYHEAD_START, useAppStore } from "@/store/appStore";
-import { DEFAULT_CONFIG } from "@/engine/run";
+import { DEFAULT_CONFIG, runEngine } from "@/engine/run";
 import { Transport } from "./Transport";
+import { Controls } from "./Controls";
 import { CodePanel } from "./CodePanel";
 import { StepList } from "./StepList";
 
 beforeEach(() => {
   useAppStore.setState({
     config: DEFAULT_CONFIG,
+    eventLog: runEngine(DEFAULT_CONFIG),
     playhead: PLAYHEAD_START,
     playing: false,
   });
@@ -46,6 +48,60 @@ describe("S1.10 code panel (AC3)", () => {
     act(() => useAppStore.getState().setPlayhead(log.findIndex((e) => e.kind === "test")));
     const active = screen.getByText(/\.filter\(/);
     expect(active).toHaveAttribute("aria-current", "true");
+  });
+});
+
+describe("S2.4 controls — slice & terminal toggles (AC1, AC2)", () => {
+  it("selecting Slice B re-runs the engine and reveals the terminal toggle", () => {
+    render(<Controls />);
+    // Terminal toggle is Slice-B-only, so it is absent under the default Slice A.
+    expect(screen.queryByRole("group", { name: /terminal/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /short-circuit/i }));
+
+    expect(useAppStore.getState().config.slice).toBe("B");
+    // A real Slice B run swapped in — its log short-circuits.
+    expect(useAppStore.getState().eventLog.some((e) => e.kind === "found")).toBe(true);
+    // ...and the findFirst/findAny toggle is now shown, reflecting the current terminal.
+    const terminal = screen.getByRole("group", { name: /terminal/i });
+    expect(within(terminal).getByRole("button", { name: /findFirst/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("the findAny toggle updates config and resets the playhead (AC2)", () => {
+    act(() => useAppStore.getState().setSlice("B"));
+    act(() => useAppStore.getState().setPlayhead(3));
+    render(<Controls />);
+
+    fireEvent.click(screen.getByRole("button", { name: /findAny/i }));
+
+    expect(useAppStore.getState().config.terminal).toBe("findAny");
+    expect(useAppStore.getState().playhead).toBe(PLAYHEAD_START);
+  });
+});
+
+describe("S2.4 code panel — tracks the selected slice/terminal", () => {
+  it("shows the grouping collector for Slice A", () => {
+    render(<CodePanel />);
+    expect(screen.getByText(/\.collect\(groupingBy/)).toBeInTheDocument();
+  });
+
+  it("shows the selected short-circuit terminal for Slice B", () => {
+    act(() => useAppStore.getState().setSlice("B"));
+    act(() => useAppStore.getState().setTerminal("findAny"));
+    render(<CodePanel />);
+    expect(screen.getByText(/\.findAny\(\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/groupingBy/)).toBeNull();
+  });
+
+  it("highlights the terminal line on the Slice B found event", () => {
+    act(() => useAppStore.getState().setSlice("B"));
+    const log = useAppStore.getState().eventLog;
+    act(() => useAppStore.getState().setPlayhead(log.findIndex((e) => e.kind === "found")));
+    render(<CodePanel />);
+    expect(screen.getByText(/\.findFirst\(\)/)).toHaveAttribute("aria-current", "true");
   });
 });
 

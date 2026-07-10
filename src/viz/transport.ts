@@ -10,7 +10,12 @@ import { type EngineEvent, type EventKind } from "@/engine/domain/event";
 /** The four pipeline stages the code panel highlights. */
 export type PipelineStage = "source" | "filter" | "map" | "collect";
 
-/** Which stage each event kind belongs to — the code-panel highlight key. */
+/**
+ * Which stage each event kind belongs to — the code-panel highlight key. `"collect"`
+ * is the *terminal line* key: it lights for the grouping terminal's `route`/
+ * `accumulate` (Slice A) and equally for the short-circuit terminal's
+ * `found`/`shortcircuit` (Slice B), whichever terminal the code panel is showing.
+ */
 const STAGE_OF_KIND: Partial<Record<EventKind, PipelineStage>> = {
   demand: "collect", // the terminal's tryAdvance drives the pull
   emit: "source",
@@ -20,6 +25,8 @@ const STAGE_OF_KIND: Partial<Record<EventKind, PipelineStage>> = {
   transform: "map",
   route: "collect",
   accumulate: "collect",
+  found: "collect", // Slice B: the terminal latches — its line lights (S2.4)
+  shortcircuit: "collect", // Slice B: the terminal ends early — still the terminal line
 };
 
 /**
