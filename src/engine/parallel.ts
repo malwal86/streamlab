@@ -11,8 +11,11 @@
  *     bins, driving the *real* op sinks through a lane-tagging recorder so a lane's
  *     `test/survive/die/transform/route/accumulate` events carry its `lane` and its
  *     counts never touch another lane's (spec §3.6, no cross-lane contamination).
- *   - **S3.3:** a `combine` beat merges the partial bins into the final grouping —
- *     provably equal to the sequential result (== oracle) for all seeds/threads.
+ *   - **S3.3 (here):** a `combine` beat merges the partial bins into the final
+ *     grouping — provably equal to the sequential result (== oracle) for all
+ *     seeds/threads. Because lanes are contiguous ascending partitions and each
+ *     lane's bins are in encounter order, merging in **lane order** reproduces the
+ *     sequential first-seen key order and per-bin encounter order exactly.
  *
  * Parallelism is *simulated*, never threaded (Decision 6/9/13): a lane's beats are
  * recorded independently, then interleaved into a single recorder whose append order
@@ -138,8 +141,29 @@ function runLane(partition: LanePartition): LaneRun {
 }
 
 /**
+ * Merge the lanes' **private partial bins** into the final grouping — the
+ * `Collector` combiner (S3.3). Fold in **lane order** (L0, L1, …): concatenating a
+ * key's members across lanes in that order restores the original encounter order
+ * (lanes are contiguous ascending index ranges, and each lane's bin is already in
+ * encounter order), and first-seen key order across lanes is the sequential
+ * first-seen order. So the merged map equals the sequential `groupingBy` result —
+ * and hence the oracle — key-for-key and member-for-member (AC2).
+ */
+function mergeBins(laneBins: readonly Map<Region, Order[]>[]): Map<Region, Order[]> {
+  const merged = new Map<Region, Order[]>();
+  for (const bins of laneBins) {
+    for (const [key, members] of bins) {
+      const existing = merged.get(key);
+      if (existing) existing.push(...members);
+      else merged.set(key, [...members]);
+    }
+  }
+  return merged;
+}
+
+/**
  * Run `orders` in parallel over `threadCount` lanes with interleaving `seed`,
- * returning the frozen event log.
+ * returning the frozen event log **and the merged grouping result**.
  *
  * The shape: one `fork` (carrying the recursive-halving split tree), then the lanes'
  * element beats woven together in the scheduler's seeded order — each lane's beats
@@ -151,7 +175,7 @@ function runLane(partition: LanePartition): LaneRun {
 export function runParallel(
   orders: readonly Order[],
   { threadCount, seed }: ParallelConfig,
-): { readonly log: readonly EngineEvent[] } {
+): { readonly log: readonly EngineEvent[]; readonly result: Map<Region, Order[]> } {
   const { tree, lanes } = splitRecursive(orders, threadCount);
   const laneRuns = lanes.map(runLane);
 
@@ -182,5 +206,13 @@ export function runParallel(
     }
   }
 
-  return { log: rec.freeze() };
+  // All lanes done — the combiner flows the private partial bins together (S3.3).
+  const result = mergeBins(laneRuns.map((run) => run.bins));
+  rec.record({
+    kind: "combine",
+    op: "combine",
+    merged: [...result].map(([key, members]) => ({ key, count: members.length })),
+  });
+
+  return { log: rec.freeze(), result };
 }

@@ -5,13 +5,12 @@
  * the pure kernel, is what lets the store stay a thin Zustand wrapper while the
  * engine stays free of React/Next/Zustand (the S0.7 import boundary).
  *
- * **Both sequential quadrants are real:** Slice A as of S1.3 — `filter → map →
- * collect(groupingBy)` — and Slice B as of S2.1 — `filter → map → findFirst()`
- * (identical to `findAny()` sequentially). The two *parallel* quadrants (E3) still
- * fall back to the identity pipeline: an honest, well-formed placeholder log so the
- * store's swap machinery, the transport, and the viz chassis are all exercised now
- * and the real scheduler drops in under this function later without the store or
- * runner changing.
+ * **Three quadrants are real:** Slice A sequential (S1.3), Slice B sequential
+ * (S2.1), and — as of S3.3 — **Slice A parallel**: `runParallel` forks the source,
+ * runs each lane's `filter → map` into private partial bins, and merges them with a
+ * `combine` (== the sequential result). Only Slice B *parallel* (E4 — ordered
+ * short-circuit vs findAny) still falls back to the identity placeholder, until that
+ * epic lands under this same function without the store or runner changing.
  *
  * Zero React/Next imports (kernel boundary — see `./README.md`).
  */
@@ -19,6 +18,7 @@ import { type EngineEvent } from "./domain/event";
 import { ORDERS } from "./domain/fixture";
 import { identityPipeline, runSequential, type Pipeline } from "./kernel/runner";
 import { sliceASequentialPipeline, sliceBSequentialPipeline } from "./pipelines";
+import { runParallel } from "./parallel";
 
 /**
  * The engine-run configuration (R3). Selects *which* pipeline `runEngine` builds:
@@ -56,12 +56,16 @@ export const DEFAULT_CONFIG: Config = {
  * reference across the playhead projection and goldens without any risk of a
  * consumer mutating history.
  *
- * Both sequential slices run their real pipeline; the parallel quadrants are the
- * identity placeholder until the scheduler lands (see the module note). Selection
- * lives here so the store stays a thin wrapper — it hands a `Config` in and gets a
- * log back, never knowing which pipeline produced it.
+ * Slice A parallel runs the real scheduler (`runParallel`); the sequential slices
+ * run their pipelines; only Slice B parallel is the identity placeholder until E4.
+ * Selection lives here so the store stays a thin wrapper — it hands a `Config` in and
+ * gets a log back, never knowing which pipeline produced it.
  */
 export function runEngine(config: Config): readonly EngineEvent[] {
+  // Slice A parallel: the forked, seed-interleaved scheduler with a combiner merge.
+  if (config.mode === "parallel" && config.slice === "A") {
+    return runParallel(ORDERS, { threadCount: config.threadCount, seed: config.seed }).log;
+  }
   const sequential = config.mode === "sequential";
   // Typed as `Pipeline<unknown>`: the branches produce different result types
   // (grouped bins / the found element / the identity list), but `runEngine`
