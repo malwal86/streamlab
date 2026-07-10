@@ -646,5 +646,24 @@
     "nextStage": "source",
     "op": "collect",
     "tick": 67
+  },
+  {
+    "kind": "combine",
+    "merged": [
+      {
+        "count": 3,
+        "key": "West"
+      },
+      {
+        "count": 2,
+        "key": "East"
+      },
+      {
+        "count": 2,
+        "key": "North"
+      }
+    ],
+    "op": "combine",
+    "tick": 68
   }
 ]
