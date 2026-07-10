@@ -1,0 +1,389 @@
+[
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 0
+  },
+  {
+    "elementId": 1,
+    "input": {
+      "region": "West",
+      "total": 80
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 1
+  },
+  {
+    "elementId": 1,
+    "input": {
+      "region": "West",
+      "total": 80
+    },
+    "kind": "test",
+    "op": "filter",
+    "output": false,
+    "predicate": "o.total > 100",
+    "tick": 2
+  },
+  {
+    "elementId": 1,
+    "kind": "die",
+    "op": "filter",
+    "tick": 3
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 4
+  },
+  {
+    "elementId": 2,
+    "input": {
+      "region": "West",
+      "total": 1200
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 5
+  },
+  {
+    "elementId": 2,
+    "input": {
+      "region": "West",
+      "total": 1200
+    },
+    "kind": "test",
+    "op": "filter",
+    "output": true,
+    "predicate": "o.total > 100",
+    "tick": 6
+  },
+  {
+    "elementId": 2,
+    "kind": "survive",
+    "nextStage": "map",
+    "op": "filter",
+    "tick": 7
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 8
+  },
+  {
+    "elementId": 3,
+    "input": {
+      "region": "East",
+      "total": 95
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 9
+  },
+  {
+    "elementId": 3,
+    "input": {
+      "region": "East",
+      "total": 95
+    },
+    "kind": "test",
+    "op": "filter",
+    "output": false,
+    "predicate": "o.total > 100",
+    "tick": 10
+  },
+  {
+    "elementId": 3,
+    "kind": "die",
+    "op": "filter",
+    "tick": 11
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 12
+  },
+  {
+    "elementId": 4,
+    "input": {
+      "region": "East",
+      "total": 450
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 13
+  },
+  {
+    "elementId": 4,
+    "input": {
+      "region": "East",
+      "total": 450
+    },
+    "kind": "test",
+    "op": "filter",
+    "output": true,
+    "predicate": "o.total > 100",
+    "tick": 14
+  },
+  {
+    "elementId": 4,
+    "kind": "survive",
+    "nextStage": "map",
+    "op": "filter",
+    "tick": 15
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 16
+  },
+  {
+    "elementId": 5,
+    "input": {
+      "region": "North",
+      "total": 300
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 17
+  },
+  {
+    "elementId": 5,
+    "input": {
+      "region": "North",
+      "total": 300
+    },
+    "kind": "test",
+    "op": "filter",
+    "output": true,
+    "predicate": "o.total > 100",
+    "tick": 18
+  },
+  {
+    "elementId": 5,
+    "kind": "survive",
+    "nextStage": "map",
+    "op": "filter",
+    "tick": 19
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 20
+  },
+  {
+    "elementId": 6,
+    "input": {
+      "region": "West",
+      "total": 150
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 21
+  },
+  {
+    "elementId": 6,
+    "input": {
+      "region": "West",
+      "total": 150
+    },
+    "kind": "test",
+    "op": "filter",
+    "output": true,
+    "predicate": "o.total > 100",
+    "tick": 22
+  },
+  {
+    "elementId": 6,
+    "kind": "survive",
+    "nextStage": "map",
+    "op": "filter",
+    "tick": 23
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 24
+  },
+  {
+    "elementId": 7,
+    "input": {
+      "region": "East",
+      "total": 600
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 25
+  },
+  {
+    "elementId": 7,
+    "input": {
+      "region": "East",
+      "total": 600
+    },
+    "kind": "test",
+    "op": "filter",
+    "output": true,
+    "predicate": "o.total > 100",
+    "tick": 26
+  },
+  {
+    "elementId": 7,
+    "kind": "survive",
+    "nextStage": "map",
+    "op": "filter",
+    "tick": 27
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 28
+  },
+  {
+    "elementId": 8,
+    "input": {
+      "region": "North",
+      "total": 99
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 29
+  },
+  {
+    "elementId": 8,
+    "input": {
+      "region": "North",
+      "total": 99
+    },
+    "kind": "test",
+    "op": "filter",
+    "output": false,
+    "predicate": "o.total > 100",
+    "tick": 30
+  },
+  {
+    "elementId": 8,
+    "kind": "die",
+    "op": "filter",
+    "tick": 31
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 32
+  },
+  {
+    "elementId": 9,
+    "input": {
+      "region": "North",
+      "total": 2000
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 33
+  },
+  {
+    "elementId": 9,
+    "input": {
+      "region": "North",
+      "total": 2000
+    },
+    "kind": "test",
+    "op": "filter",
+    "output": true,
+    "predicate": "o.total > 100",
+    "tick": 34
+  },
+  {
+    "elementId": 9,
+    "kind": "survive",
+    "nextStage": "map",
+    "op": "filter",
+    "tick": 35
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 36
+  },
+  {
+    "elementId": 10,
+    "input": {
+      "region": "West",
+      "total": 100
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 37
+  },
+  {
+    "elementId": 10,
+    "input": {
+      "region": "West",
+      "total": 100
+    },
+    "kind": "test",
+    "op": "filter",
+    "output": false,
+    "predicate": "o.total > 100",
+    "tick": 38
+  },
+  {
+    "elementId": 10,
+    "kind": "die",
+    "op": "filter",
+    "tick": 39
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 40
+  },
+  {
+    "elementId": 11,
+    "input": {
+      "region": "West",
+      "total": 250
+    },
+    "kind": "emit",
+    "op": "source",
+    "tick": 41
+  },
+  {
+    "elementId": 11,
+    "input": {
+      "region": "West",
+      "total": 250
+    },
+    "kind": "test",
+    "op": "filter",
+    "output": true,
+    "predicate": "o.total > 100",
+    "tick": 42
+  },
+  {
+    "elementId": 11,
+    "kind": "survive",
+    "nextStage": "map",
+    "op": "filter",
+    "tick": 43
+  },
+  {
+    "kind": "demand",
+    "nextStage": "source",
+    "op": "identity",
+    "tick": 44
+  }
+]
