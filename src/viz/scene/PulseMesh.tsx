@@ -14,12 +14,21 @@ import { type Pulse } from "../projection";
 export function PulseMesh({ pulse }: { pulse: Pulse }) {
   const hue = regionHue(pulse.region);
   const radius = pulseRadius(pulse.total);
+  // Survivors brighten as they clear the filter (S1.7); a dying pulse fades out.
+  const emissiveIntensity = pulse.kind === "survive" ? 3.4 : 2.2;
 
   return (
     <group position={[pulse.x, pulse.y, 0]}>
       <mesh>
         <sphereGeometry args={[radius, 24, 24]} />
-        <meshStandardMaterial color={hue} emissive={hue} emissiveIntensity={2.2} toneMapped={false} />
+        <meshStandardMaterial
+          color={hue}
+          emissive={hue}
+          emissiveIntensity={emissiveIntensity}
+          transparent
+          opacity={pulse.opacity}
+          toneMapped={false}
+        />
       </mesh>
       <Html
         center
@@ -35,6 +44,7 @@ export function PulseMesh({ pulse }: { pulse: Pulse }) {
           font: "600 12px ui-monospace, SFMono-Regular, Menlo, monospace",
           whiteSpace: "nowrap",
           textShadow: "0 1px 3px rgba(0,0,0,0.9)",
+          opacity: pulse.opacity,
         }}
       >
         {pulseLabel(pulse.total, pulse.region)}
