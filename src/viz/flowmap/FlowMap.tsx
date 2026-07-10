@@ -108,9 +108,14 @@ export function FlowMap() {
     const parallel = config.mode === "parallel";
 
     // ── coordinate mapping: geometry space (x∈[-6,6]) → canvas ─────────────
-    const padX = 92;
-    const innerW = W - 2 * padX;
-    const geoX = (gx: number) => padX + ((gx + 6) / 12) * innerW;
+    // Asymmetric padding: the terminal sits at the right edge of geometry space
+    // (gx = 6), and the grouping bins (West/East/North towers) draw *past* it, so
+    // the right side needs far more room than the left. A wider right pad shifts
+    // the whole pipeline left and gives every final group space to fan out.
+    const padL = 92;
+    const padR = 200;
+    const innerW = W - padL - padR;
+    const geoX = (gx: number) => padL + ((gx + 6) / 12) * innerW;
     // Cap the pipeline's depth and center it vertically — it needn't fill a tall
     // canvas, so on a big screen it stays a compact band with breathing room.
     const topReserve = 96; // HUD + section labels sit above the band
