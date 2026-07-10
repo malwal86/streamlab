@@ -189,6 +189,23 @@ export interface FoundLatch {
 }
 
 /**
+ * The source stack's state at the current playhead (S2.3, Slice B wow). The stack
+ * shows one slot per source element — `total` of them — regardless of how many were
+ * pulled: a short-circuit run only *emits* the pulled prefix, so the un-pulled
+ * remainder has no `emit` in the log and its count must come from
+ * `shortcircuit.remainingUnpulled`. `neverPulledCount` is 0 until the playhead
+ * reaches the `shortcircuit` beat, then equals that remainder — the slots that go
+ * **dark** because they were never demanded (AC1/AC2). In Slice A everything is
+ * pulled, so `neverPulledCount` stays 0 and `total` == the emit count.
+ */
+export interface SourceState {
+  /** Total source elements — pulled (`emit`s) plus the never-pulled remainder. */
+  readonly total: number;
+  /** How many trailing slots are dark ("never pulled"); 0 until `shortcircuit`. */
+  readonly neverPulledCount: number;
+}
+
+/**
  * What the scene draws at a playhead. Exactly one of `demandSpike`/`pulse` is
  * non-null while a beat is in flight (or both null on a non-heartbeat event) — the
  * "never two spikes" guardrail, true by construction (S1.5 AC3).
@@ -202,12 +219,17 @@ export interface SceneState {
   readonly bins: readonly BinFill[];
   /** The terminal's latched "FOUND" result once the playhead passes `found` (S2.2); else null. */
   readonly found: FoundLatch | null;
+  /** The source stack: its total height and how much of it has gone dark, never-pulled (S2.3). */
+  readonly source: SourceState;
 }
 
 /** Zero-fill bins for every region — the empty-scene / pre-roll state. */
 const EMPTY_BINS: readonly BinFill[] = Object.freeze(
   REGIONS.map((region) => Object.freeze({ region, count: 0 })),
 );
+
+/** The zero source stack — an empty log has no elements to pull. */
+const EMPTY_SOURCE: SourceState = Object.freeze({ total: 0, neverPulledCount: 0 });
 
 /** The empty scene — nothing in flight (empty log, or a non-heartbeat event). */
 const EMPTY_SCENE: SceneState = Object.freeze({
@@ -216,6 +238,7 @@ const EMPTY_SCENE: SceneState = Object.freeze({
   filterReadout: null,
   bins: EMPTY_BINS,
   found: null,
+  source: EMPTY_SOURCE,
 });
 
 /**
@@ -255,6 +278,30 @@ function foundLatchAt(log: readonly EngineEvent[], eventIndex: number): FoundLat
     return { elementId: event.elementId, region: payload.region, total };
   }
   return null;
+}
+
+/**
+ * The source stack's state at `eventIndex` (S2.3). `total` is every source element
+ * — the `emit`s (pulled) plus `shortcircuit.remainingUnpulled` (never pulled), the
+ * only place the un-pulled count is recorded (they have no `emit`). `neverPulledCount`
+ * stays 0 until the playhead reaches the `shortcircuit` beat, then reveals that
+ * remainder as the dark, never-demanded slots (AC1/AC2). A pure read of the log, so
+ * the counter always equals the engine's `remainingUnpulled`, never a re-count.
+ */
+function sourceStateAt(log: readonly EngineEvent[], eventIndex: number): SourceState {
+  let emits = 0;
+  let scIndex = -1;
+  let remaining = 0;
+  for (let i = 0; i < log.length; i += 1) {
+    const event = log[i]!;
+    if (event.kind === "emit") emits += 1;
+    else if (event.kind === "shortcircuit") {
+      scIndex = i;
+      remaining = event.remainingUnpulled;
+    }
+  }
+  const neverPulledCount = scIndex >= 0 && eventIndex >= scIndex ? remaining : 0;
+  return { total: emits + remaining, neverPulledCount };
 }
 
 /** How far below the conduit a rejected pulse sinks as it dissipates (spec §3.6). */
@@ -324,6 +371,8 @@ export function projectScene(
   const bins = binsAt(log, index, reducedMotion ? 1 : frac);
   // The FOUND latch persists once passed — independent of what is in flight (S2.2).
   const found = foundLatchAt(log, index);
+  // The source stack + its never-pulled dark remainder, revealed at shortcircuit (S2.3).
+  const source = sourceStateAt(log, index);
 
   // Retrograde demand spike (terminal → source): the beat's opening pull.
   if (current.kind === "demand") {
@@ -335,6 +384,7 @@ export function projectScene(
       filterReadout: null,
       bins,
       found,
+      source,
     };
   }
 
@@ -378,13 +428,21 @@ export function projectScene(
         pulse = { ...base, x: lerp(fromX, toX, posT), y: 0, z: 0, opacity: 1 };
       }
 
-      return { demandSpike: null, pulse, filterReadout: filterReadoutFor(log, pulse), bins, found };
+      return {
+        demandSpike: null,
+        pulse,
+        filterReadout: filterReadoutFor(log, pulse),
+        bins,
+        found,
+        source,
+      };
     }
   }
 
   // A non-heartbeat event (`shortcircuit`, or parallel `fork`/`lane-demand`/… —
-  // later epics): nothing in flight, but the bins and the FOUND latch still show.
-  return { demandSpike: null, pulse: null, filterReadout: null, bins, found };
+  // later epics): nothing in flight, but the bins, FOUND latch, and dark source
+  // remainder still show.
+  return { demandSpike: null, pulse: null, filterReadout: null, bins, found, source };
 }
 
 /** The caption shown for each forward-pulse stage (the demand caption is fixed). */

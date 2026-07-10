@@ -1,9 +1,9 @@
 "use client";
 
-import { OrbitControls } from "@react-three/drei";
-import { useAppStore } from "@/store/appStore";
+import { Html, OrbitControls } from "@react-three/drei";
 import { CONDUIT_NODES, axonSegments, conduitNode } from "../geometry";
-import { sourceStackCount } from "../projection";
+import { type SourceState } from "../projection";
+import { useScene } from "./useScene";
 import { Neuron } from "./Neuron";
 import { Axon } from "./Axon";
 import { Heartbeat } from "./Heartbeat";
@@ -13,22 +13,53 @@ import { RegionBins } from "./RegionBins";
 import { FoundLatch } from "./FoundLatch";
 
 /**
- * The inert **source stack** (S1.4): one dim dot per element the source will
- * release (`sourceStackCount`), stacked vertically just left of the source neuron.
- * It sits dark until the terminal first demands from it — the laziness cue S1.5
- * animates. Its height is a pure read of the log, so it always shows exactly what
- * the engine emitted.
+ * The **source stack** (S1.4 → S2.3): one dot per source element, stacked vertically
+ * just left of the source neuron. Its height is `source.total` — every element the
+ * source *holds*, pulled or not. In Slice B a short-circuit run leaves a tail of
+ * elements **never demanded**: once the playhead passes `shortcircuit`, the trailing
+ * `source.neverPulledCount` dots go **dark** (desaturated, dimmed) and a
+ * "N never pulled" counter appears — the visible proof that laziness meant they were
+ * never touched (spec §3.2 Slice B wow, AC1/AC2). All a pure read of the projection.
  */
-function SourceStack({ count }: { count: number }) {
+function SourceStack({ source }: { source: SourceState }) {
   const x = conduitNode("source").x - 1.4;
+  const { total, neverPulledCount } = source;
+  // The un-pulled remainder is the encounter-order tail — the top slots here.
+  const firstDarkIndex = total - neverPulledCount;
+
   return (
     <group position={[x, 0, 0]}>
-      {Array.from({ length: count }, (_, i) => (
-        <mesh key={i} position={[0, (i - (count - 1) / 2) * 0.32, 0]}>
-          <sphereGeometry args={[0.11, 12, 12]} />
-          <meshStandardMaterial color="#26324c" emissive="#0b1a33" emissiveIntensity={0.5} />
-        </mesh>
-      ))}
+      {Array.from({ length: total }, (_, i) => {
+        const dark = i >= firstDarkIndex;
+        return (
+          <mesh key={i} position={[0, (i - (total - 1) / 2) * 0.32, 0]}>
+            <sphereGeometry args={[0.11, 12, 12]} />
+            <meshStandardMaterial
+              color={dark ? "#141821" : "#26324c"}
+              emissive={dark ? "#000000" : "#0b1a33"}
+              emissiveIntensity={dark ? 0 : 0.5}
+              transparent
+              opacity={dark ? 0.35 : 1}
+            />
+          </mesh>
+        );
+      })}
+      {neverPulledCount > 0 && (
+        <Html
+          center
+          position={[0, (total - 1) / 2 + 0.55, 0]}
+          distanceFactor={13}
+          style={{
+            pointerEvents: "none",
+            color: "#8a94a8",
+            font: "600 12px ui-monospace, SFMono-Regular, Menlo, monospace",
+            whiteSpace: "nowrap",
+            textShadow: "0 1px 3px rgba(0,0,0,0.9)",
+          }}
+        >
+          {neverPulledCount} never pulled
+        </Html>
+      )}
     </group>
   );
 }
@@ -41,8 +72,7 @@ function SourceStack({ count }: { count: number }) {
  * the DOM (S1.10); this component owns only what lives in 3D.
  */
 export function ConduitScene() {
-  const log = useAppStore((s) => s.eventLog);
-  const stack = sourceStackCount(log);
+  const { source } = useScene();
 
   return (
     <>
@@ -56,7 +86,7 @@ export function ConduitScene() {
       {CONDUIT_NODES.map((node) => (
         <Neuron key={node.id} id={node.id} />
       ))}
-      <SourceStack count={stack} />
+      <SourceStack source={source} />
       <RegionBins />
       <FoundLatch />
 
