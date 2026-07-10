@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import styles from "./page.module.css";
+import { Landing } from "./Landing";
 import { Caption } from "@/viz/Caption";
 import { Transport } from "@/viz/chrome/Transport";
 import { Controls } from "@/viz/chrome/Controls";
@@ -20,29 +21,33 @@ export default function Home() {
   useSyncReducedMotion(); // mirror prefers-reduced-motion into the store (S1.11)
 
   return (
-    <main className={styles.main}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>StreamLab</h1>
-        <p className={styles.tagline}>
-          A neural network wired backwards — the consumer drives the producer.
-        </p>
-      </header>
+    <>
+      <Landing />
 
-      <div className={styles.workspace}>
-        <section className={styles.stage} aria-label="Neural conduit stage">
-          <div className={styles.canvasWrap}>
-            <ConduitCanvas />
-            <Caption />
-          </div>
-          <Transport />
-        </section>
+      <main id="demo" className={styles.main}>
+        <header className={styles.header}>
+          <h1 className={styles.title}>StreamLab</h1>
+          <p className={styles.tagline}>
+            A neural network wired backwards — the consumer drives the producer.
+          </p>
+        </header>
 
-        <aside className={styles.sidebar} aria-label="Pipeline and event log">
-          <Controls />
-          <CodePanel />
-          <StepList />
-        </aside>
-      </div>
-    </main>
+        <div className={styles.workspace}>
+          <section className={styles.stage} aria-label="Neural conduit stage">
+            <div className={styles.canvasWrap}>
+              <ConduitCanvas />
+              <Caption />
+            </div>
+            <Transport />
+          </section>
+
+          <aside className={styles.sidebar} aria-label="Pipeline and event log">
+            <Controls />
+            <CodePanel />
+            <StepList />
+          </aside>
+        </div>
+      </main>
+    </>
   );
 }
