@@ -6,6 +6,8 @@ import { CONDUIT_NODES, axonSegments, conduitNode } from "../geometry";
 import { sourceStackCount } from "../projection";
 import { Neuron } from "./Neuron";
 import { Axon } from "./Axon";
+import { Heartbeat } from "./Heartbeat";
+import { AutoPlay } from "./AutoPlay";
 
 /**
  * The inert **source stack** (S1.4): one dim dot per element the source will
@@ -52,6 +54,9 @@ export function ConduitScene() {
         <Neuron key={node.id} id={node.id} />
       ))}
       <SourceStack count={stack} />
+
+      <Heartbeat />
+      <AutoPlay />
 
       <OrbitControls enablePan={false} enableDamping dampingFactor={0.1} />
     </>

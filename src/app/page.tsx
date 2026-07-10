@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import styles from "./page.module.css";
+import { Caption } from "@/viz/Caption";
 
 // The WebGL canvas is dynamically imported with `ssr: false` so three.js never
 // runs during (static) prerender — the conduit is a client-only concern.
@@ -21,6 +22,7 @@ export default function Home() {
       </header>
       <section className={styles.stage} aria-label="Neural conduit stage">
         <ConduitCanvas />
+        <Caption />
       </section>
     </main>
   );
