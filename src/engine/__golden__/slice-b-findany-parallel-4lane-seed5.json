@@ -1,0 +1,157 @@
+[
+  {
+    "kind": "fork",
+    "lanes": 4,
+    "op": "fork",
+    "splitTree": {
+      "children": [
+        {
+          "children": [
+            {
+              "estimatedSize": 2,
+              "lane": "L0"
+            },
+            {
+              "estimatedSize": 3,
+              "lane": "L1"
+            }
+          ],
+          "estimatedSize": 5,
+          "lane": "L0-L1"
+        },
+        {
+          "children": [
+            {
+              "estimatedSize": 3,
+              "lane": "L2"
+            },
+            {
+              "estimatedSize": 3,
+              "lane": "L3"
+            }
+          ],
+          "estimatedSize": 6,
+          "lane": "L2-L3"
+        }
+      ],
+      "estimatedSize": 11,
+      "lane": "L0-L1-L2-L3"
+    },
+    "tick": 0
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L1",
+    "nextStage": "source",
+    "op": "find",
+    "tick": 1
+  },
+  {
+    "elementId": 3,
+    "input": {
+      "region": "East",
+      "total": 95
+    },
+    "kind": "emit",
+    "lane": "L1",
+    "op": "source",
+    "tick": 2
+  },
+  {
+    "elementId": 3,
+    "input": {
+      "region": "East",
+      "total": 95
+    },
+    "kind": "test",
+    "lane": "L1",
+    "op": "filter",
+    "output": false,
+    "predicate": "o.total > 100",
+    "tick": 3
+  },
+  {
+    "elementId": 3,
+    "kind": "die",
+    "lane": "L1",
+    "op": "filter",
+    "tick": 4
+  },
+  {
+    "kind": "lane-demand",
+    "lane": "L3",
+    "nextStage": "source",
+    "op": "find",
+    "tick": 5
+  },
+  {
+    "elementId": 9,
+    "input": {
+      "region": "North",
+      "total": 2000
+    },
+    "kind": "emit",
+    "lane": "L3",
+    "op": "source",
+    "tick": 6
+  },
+  {
+    "elementId": 9,
+    "input": {
+      "region": "North",
+      "total": 2000
+    },
+    "kind": "test",
+    "lane": "L3",
+    "op": "filter",
+    "output": true,
+    "predicate": "o.total > 100",
+    "tick": 7
+  },
+  {
+    "elementId": 9,
+    "kind": "survive",
+    "lane": "L3",
+    "nextStage": "map",
+    "op": "filter",
+    "tick": 8
+  },
+  {
+    "after": 1800,
+    "before": 2000,
+    "elementId": 9,
+    "kind": "transform",
+    "lane": "L3",
+    "nextStage": "collect",
+    "op": "map",
+    "tick": 9
+  },
+  {
+    "elementId": 9,
+    "kind": "found",
+    "lane": "L3",
+    "op": "find",
+    "tick": 10
+  },
+  {
+    "kind": "cancel",
+    "lane": "L0",
+    "op": "find",
+    "reason": "another lane found a match first",
+    "tick": 11
+  },
+  {
+    "kind": "cancel",
+    "lane": "L1",
+    "op": "find",
+    "reason": "another lane found a match first",
+    "tick": 12
+  },
+  {
+    "kind": "cancel",
+    "lane": "L2",
+    "op": "find",
+    "reason": "another lane found a match first",
+    "tick": 13
+  }
+]
