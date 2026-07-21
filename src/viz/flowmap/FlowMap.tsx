@@ -112,10 +112,20 @@ export function FlowMap() {
     // (gx = 6), and the grouping bins (West/East/North towers) draw *past* it, so
     // the right side needs far more room than the left. A wider right pad shifts
     // the whole pipeline left and gives every final group space to fan out.
-    const padL = 92;
-    const padR = 200;
-    const innerW = W - padL - padR;
+    //
+    // Narrow (phone) canvases get a `compact` layout: tighter paddings, smaller
+    // type, and — crucially — a stage column that is clamped to just under the
+    // stage spacing so the four columns never collapse into each other when the
+    // pipeline is squeezed into ~300–400px of width.
+    const compact = W < 700;
+    const padL = compact ? 34 : 92;
+    const padR = compact ? 128 : 200;
+    const innerW = Math.max(1, W - padL - padR);
     const geoX = (gx: number) => padL + ((gx + 6) / 12) * innerW;
+    const stageSpacing = innerW / 3; // distance between adjacent stage centers
+    const colW = clamp(compact ? 56 : 96, 40, stageSpacing - 6);
+    const fsStage = compact ? 12 : 14;
+    const fsSub = compact ? 9 : 10;
     // Cap the pipeline's depth and center it vertically — it needn't fill a tall
     // canvas, so on a big screen it stays a compact band with breathing room.
     const topReserve = 96; // HUD + section labels sit above the band
@@ -134,16 +144,19 @@ export function FlowMap() {
     const cancelled = parallel ? cancelledLanes(log, playhead) : new Set<string>();
 
     // ── section labels, just above the (centered) band ────────────────────
-    const labelY = bandTop - 24;
-    ctx.textAlign = "center";
-    ctx.fillStyle = FAINT;
-    ctx.font = `600 10px ${MONO}`;
-    ctx.fillText("SOURCE", geoX(stageX("source")), labelY);
-    ctx.fillText("INTERMEDIATE OPS", (geoX(stageX("filter")) + geoX(stageX("map"))) / 2, labelY);
-    ctx.fillText("TERMINAL", geoX(stageX("terminal")), labelY);
+    // On a phone the three section captions would overlap the tight columns and
+    // duplicate the per-stage headers, so they are dropped in the compact layout.
+    if (!compact) {
+      const labelY = bandTop - 24;
+      ctx.textAlign = "center";
+      ctx.fillStyle = FAINT;
+      ctx.font = `600 10px ${MONO}`;
+      ctx.fillText("SOURCE", geoX(stageX("source")), labelY);
+      ctx.fillText("INTERMEDIATE OPS", (geoX(stageX("filter")) + geoX(stageX("map"))) / 2, labelY);
+      ctx.fillText("TERMINAL", geoX(stageX("terminal")), labelY);
+    }
 
     // ── stage columns (behind the conduit) ────────────────────────────────
-    const colW = 96;
     for (const id of STAGE_ORDER) {
       const x = geoX(stageX(id));
       const hue = STAGE_META[id].hue;
@@ -158,11 +171,11 @@ export function FlowMap() {
       ctx.fill();
       ctx.textAlign = "center";
       ctx.fillStyle = hue;
-      ctx.font = `600 14px ${MONO}`;
+      ctx.font = `600 ${fsStage}px ${MONO}`;
       ctx.fillText(STAGE_META[id].label, x, bandTop + 6);
       ctx.fillStyle = MUTED;
-      ctx.font = `10px ${MONO}`;
-      ctx.fillText(subFor(id, config), x, bandTop + 22);
+      ctx.font = `${fsSub}px ${MONO}`;
+      ctx.fillText(subFor(id, config, compact), x, bandTop + 22);
     }
 
     // ── lane conduits ─────────────────────────────────────────────────────
@@ -210,7 +223,7 @@ export function FlowMap() {
     // ── terminal payload ──────────────────────────────────────────────────
     const termX = geoX(stageX("terminal"));
     if (config.slice === "A") {
-      drawBins(ctx, scene.bins, termX + colW / 2 + 16, midY);
+      drawBins(ctx, scene.bins, termX + colW / 2 + 16, midY, compact);
     } else if (scene.found) {
       drawFound(ctx, scene.found, termX, bandTop);
     }
@@ -243,7 +256,7 @@ export function FlowMap() {
     }
 
     // ── HUD: run summary + modeled wall-clock ─────────────────────────────
-    drawHud(ctx, { W, config, metrics, baselineWall });
+    drawHud(ctx, { W, config, metrics, baselineWall, compact });
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
   }, [log, playhead, reducedMotion, config, size, baselineWall]);
@@ -272,10 +285,16 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-function subFor(id: StageId, config: { slice: "A" | "B"; terminal: "findFirst" | "findAny" }): string {
+function subFor(
+  id: StageId,
+  config: { slice: "A" | "B"; terminal: "findFirst" | "findAny" },
+  compact = false,
+): string {
+  // On a phone the columns are too narrow for the full expressions, so the
+  // captions shrink to the essential token — the code panel below shows the rest.
   if (id === "source") return "orders";
-  if (id === "filter") return "total > 100";
-  if (id === "map") return "applyDiscount";
+  if (id === "filter") return compact ? "> 100" : "total > 100";
+  if (id === "map") return compact ? "discount" : "applyDiscount";
   return config.slice === "A" ? "groupingBy" : `${config.terminal}()`;
 }
 
@@ -405,11 +424,12 @@ function drawBins(
   bins: readonly { region: Region; count: number }[],
   x: number,
   midY: number,
+  compact = false,
 ) {
-  const unit = 12;
-  const barW = 24;
-  const gap = 10;
-  const maxH = 96;
+  const unit = compact ? 10 : 12;
+  const barW = compact ? 18 : 24;
+  const gap = compact ? 7 : 10;
+  const maxH = compact ? 72 : 96;
   let bx = x;
   ctx.textAlign = "center";
   for (const bin of bins) {
@@ -469,41 +489,51 @@ function drawHud(
     config: { slice: "A" | "B"; mode: "sequential" | "parallel"; threadCount: 2 | 4; terminal: "findFirst" | "findAny" };
     metrics: ReturnType<typeof flowMetrics>;
     baselineWall: number;
+    compact?: boolean;
   },
 ) {
-  const { W, config, metrics, baselineWall } = o;
+  const { W, config, metrics, baselineWall, compact = false } = o;
+  // Tighter insets and type on a phone, so the left run-summary and the right
+  // wall-clock read-out never collide across the narrow canvas.
+  const pad = compact ? 12 : 24;
   // top-left: run summary
   ctx.textAlign = "left";
   ctx.fillStyle = MUTED;
-  ctx.font = `600 11px ${MONO}`;
+  ctx.font = `600 ${compact ? 10 : 11}px ${MONO}`;
   const modeText =
     config.mode === "parallel" ? `parallel · ${config.threadCount} lanes` : "sequential";
   const sliceText = config.slice === "A" ? "groupingBy" : config.terminal;
-  ctx.fillText(`${modeText}  ·  ${sliceText}`, 24, 22);
+  ctx.fillText(`${modeText}  ·  ${sliceText}`, pad, 22);
   ctx.fillStyle = FAINT;
-  ctx.font = `10px ${MONO}`;
-  ctx.fillText(
-    `pulled ${metrics.pulled}/${ORDERS.length}` +
-      (metrics.neverPulled > 0 ? `   ·   ${metrics.neverPulled} never pulled (short-circuit)` : ""),
-    24,
-    38,
-  );
+  ctx.font = `${compact ? 9 : 10}px ${MONO}`;
+  // The short-circuit note is abbreviated on a phone so it stays clear of the
+  // right-aligned CPU read-out on the same line.
+  const shortNote = metrics.neverPulled > 0
+    ? compact
+      ? `   ·   ${metrics.neverPulled} skipped`
+      : `   ·   ${metrics.neverPulled} never pulled (short-circuit)`
+    : "";
+  ctx.fillText(`pulled ${metrics.pulled}/${ORDERS.length}${shortNote}`, pad, 38);
 
   // top-right: modeled wall-clock
   ctx.textAlign = "right";
-  const rx = W - 24;
+  const rx = W - pad;
   ctx.fillStyle = INK;
-  ctx.font = `800 24px ${MONO}`;
+  ctx.font = `800 ${compact ? 19 : 24}px ${MONO}`;
   ctx.fillText(`${Math.round(metrics.wallElapsed)} ms`, rx, 26);
-  ctx.font = `10px ${MONO}`;
+  ctx.font = `${compact ? 9 : 10}px ${MONO}`;
   ctx.fillStyle = MUTED;
-  ctx.fillText(`wall-clock (modeled) · CPU ${metrics.cpuWork} ms`, rx, 42);
+  ctx.fillText(
+    compact ? `wall-clock · CPU ${metrics.cpuWork} ms` : `wall-clock (modeled) · CPU ${metrics.cpuWork} ms`,
+    rx,
+    42,
+  );
   if (config.mode === "parallel" && metrics.wallClock > 0) {
     const speedup = baselineWall / metrics.wallClock;
     const good = speedup >= 1.05;
     const slower = speedup < 0.99;
     ctx.fillStyle = good ? STAGE_META.filter.hue : slower ? "#fb7185" : MUTED;
-    ctx.font = `600 11px ${MONO}`;
+    ctx.font = `600 ${compact ? 10 : 11}px ${MONO}`;
     ctx.fillText(
       slower ? `${speedup.toFixed(2)}× slower than 1 lane` : `${speedup.toFixed(2)}× vs 1 lane`,
       rx,

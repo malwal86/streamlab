@@ -216,3 +216,49 @@
     transition: none;
   }
 }
+
+/* ── Narrow screens (phones) ────────────────────────────────────────────── */
+/* The transport packs three buttons + scrub + counter + speed onto one row; at
+   phone widths that overflowed and clipped the speed control. Tighten the gaps,
+   shrink the touch targets a touch, and let the row wrap as a last resort. */
+@media (max-width: 520px) {
+  .transport {
+    gap: 0.3rem;
+    padding: 0.5rem 0.6rem;
+    flex-wrap: wrap;
+    row-gap: 0.4rem;
+  }
+  .iconBtn {
+    width: 34px;
+    height: 34px;
+  }
+  .scrub {
+    min-width: 70px;
+  }
+  .counter {
+    min-width: 2.6rem;
+    font-size: 0.72rem;
+  }
+
+  .controls {
+    gap: 0.5rem;
+    padding: 0.55rem 0.7rem;
+  }
+  .segmented {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  .segOn,
+  .segOff {
+    padding: 0.26rem 0.6rem;
+    font-size: 0.74rem;
+  }
+
+  .code {
+    padding: 0.75rem 0.8rem;
+  }
+  .codeLine,
+  .codeActive {
+    font-size: 0.76rem;
+  }
+}
